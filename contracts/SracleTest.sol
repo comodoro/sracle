@@ -1,3 +1,5 @@
+//Test contract
+//A very simple test
 pragma solidity ^0.4.7;
 
 import "./Sracle.sol";
