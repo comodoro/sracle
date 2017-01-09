@@ -9,7 +9,7 @@ contract SracleTest is UsingSracle {
 
 	function test(address sracleAddress) {
 		Sracle sracle = Sracle(sracleAddress);
-		sracle.query("http://www.google.com"); 
+		sracle.query("http://www.google.com/search?q=dungbeetle///.rc[1]"); 
 	}
 
 	function SracleAnswer(string answer) {
