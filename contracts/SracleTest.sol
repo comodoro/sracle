@@ -7,12 +7,11 @@ import "./UsingSracle.sol";
 
 contract SracleTest is UsingSracle {
 
-	function test(address sracleAddress) {
-		Sracle sracle = Sracle(sracleAddress);
-		sracle.query("http://www.google.com/search?q=dungbeetle///.rc[1]"); 
+	function test(address sracleAddress) payable {
+		Sracle(sracleAddress).query.value(msg.value)("https://en.wikipedia.org/wiki/Boii///#mw-content-text/p[1]"); 
 	}
 
-	function SracleAnswer(string answer) {
+	function sracleAnswer(string answer, uint flags) {
 		TestEvent(answer);
 	}
 
