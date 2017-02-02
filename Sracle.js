@@ -14,6 +14,7 @@ var fs = require('fs');
 var util = require('util');
 var request = require('request');
 var cheerio = require('cheerio');
+var contract = require("truffle-contract");
 /*var logFile = fs.createWriteStream('log.txt', { flags: 'a' });
 var logStdout = process.stdout;
 
@@ -24,9 +25,11 @@ console.log = function () {
 
 console.error = console.log;
 */
-var SracleOracle = require('./build/contracts/SracleOracle.sol.js');
+var SracleOracleJSON = require('./build/contracts/SracleOracle.json');
+var SracleOracle = contract(SracleOracleJSON);		
 SracleOracle.setProvider(web3.currentProvider);
-var UsingSracle = require('./build/contracts/UsingSracle.sol.js');
+var UsingSracleJSON = require('./build/contracts/UsingSracle.json');
+var UsingSracle = contract(UsingSracleJSON);		
 UsingSracle.setProvider(web3.currentProvider);
 var SracleContract = SracleOracle.deployed();
 /*
@@ -76,7 +79,7 @@ console.log(param);
 	console.log("CSS: " + css);
 	request(url, function (error, response, body) {
 		console.log(error);
- 		if (!error && response.statusCode == 200) {
+ 		if (!error && response.statusCode === 200) {
     			var $ = cheerio.load(body);
 			//console.log("Body: " + body);
 			//console.log("$: " +  $);

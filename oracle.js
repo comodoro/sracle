@@ -8,9 +8,11 @@ if (typeof web3 !== 'undefined') {
 }
 
 var path = require('path');
-var sracle = require(path.join(__dirname, 'oracle.js')).Sracle;
+var contract = require("truffle-contract");
+var sracle = require(path.join(__dirname, 'Sracle.js')).Sracle;
 
-var SracleTest = require('./build/contracts/SracleTest.sol.js');
+var SracleTestJSON = require('./build/contracts/SracleTest.json');
+var SracleTest = contract(SracleTestJSON);
 SracleTest.setProvider(web3.currentProvider);
 var SracleTestContract = SracleTest.deployed();
 
@@ -21,8 +23,7 @@ var amount = web3.toWei(0.01, "ether")
 
 function tick() {
 	console.log("tick " + i);
-//	console.log(SracleContract);
-	//SracleTestContract.test({from: web3.eth.coinbase, value: amount});
+	SracleTestContract.test({from: web3.eth.coinbase, value: amount});
 	i++;
 }
 
