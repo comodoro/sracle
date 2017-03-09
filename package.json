@@ -1,5 +1,17 @@
-{
-"scripts": {
+{ 
+  "name": "sracle",
+  "description": "Open source JavaScript oracle",
+  "version": "0.0.1",
+  "bin" : { "sracle" : "./oracle.js" },
+  "dependencies": {
+    "cheerio": "0.22.0",
+    "fs": "0.0.1-security"
+    "path":"0.12.7",
+    "request":"2.80.0",
+    "web3":"0.18.2"
+  },
+  "scripts": {
     "test": "mocha"
-   }
- }
+   },
+  "main": "oracle.js"
+}
