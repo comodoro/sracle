@@ -1,17 +1,21 @@
-{ 
+{
   "name": "sracle",
   "description": "Open source JavaScript oracle",
   "version": "0.0.1",
-  "bin" : { "sracle" : "./oracle.js" },
+  "bin": {
+    "sracle": "./oracle.js"
+  },
   "dependencies": {
-    "cheerio": "0.22.0",
-    "fs": "0.0.1-security"
-    "path":"0.12.7",
-    "request":"2.80.0",
-    "web3":"0.18.2"
+    "assert": "^1.4.1",
+    "cheerio": "^1.0.0-rc.2",
+    "mocha": "^4.0.1",
+    "path": "^0.12.7",
+    "request": "^2.83.0",
+    "web3": "^1.0.0-beta.24",
+    "web3-net": "^1.0.0-beta.24"
   },
   "scripts": {
     "test": "mocha"
-   },
+  },
   "main": "oracle.js"
 }
