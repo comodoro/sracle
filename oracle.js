@@ -1,31 +1,16 @@
+var Web3 = require('web3');
+web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
 
-if (typeof web3 !== 'undefined') {
-  web3 = new Web3(web3.currentProvider);
-} else {
-  var Web3 = require('web3');
-  // set the provider you want from Web3.providers
-  web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-}
-
-web3.eth.net.isListening().then(console.log);
-
-var path = require('path');
-var sracle = require('./Sracle');
-
-
-s = new sracle();
-//needs to be delayed even for testrpc, more on blockchain
-setTimeout(function () {
-	s.init();
-}, 1000);
-
-var i = 1;
-var amount = web3.toWei(0.01, "ether")
-
+var sracle = (new require('./Sracle'));
 
 function tick() {
-	console.log("tick " + i);
-	i++;
+
 }
 
-setInterval(tick, 1000);
+sracle.deploy()
+.then(function(result, error){
+  return result.setUp();
+})
+.then(function(result, error){
+  setInterval(tick, 1000);
+});

@@ -34,8 +34,12 @@ describe('All', function () {
 				throw new Error('Not deployed');
 			});
 		});
-		it('should run for at least two blocks', function () {
-			throw new Error('Not implemented');
+		it('should set up', function () {
+			sracle.deploy().then(function(resolve){
+				console.log('Deployed');
+			}).then(function(resolve){
+				sracle.setUp().then(done);
+			});
 		});
 		it('should return nonempty text for some css on google.com', function () {
 			throw new Error('Not implemented');

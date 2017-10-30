@@ -58,18 +58,23 @@ Sracle.prototype.deploy = function() {
 }	
 
 Sracle.prototype.setUp = function() {
+	var self = this;
 	//TODO online compile from conracts/
 	this.callbackAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"type":"function"}];
 	this.UsingSracle = new web3.eth.Contract(this.callbackAbi);
 	return new Promise(function(resolve, reject) {
-		this.SracleContract.events.SracleQuery({
+		self.SracleContract.events.SracleQuery({
 			fromBlock: web3.eth.getBlockNumber().then(function(result) {
 				return result;
 			})
-			}, function(event) {
-				this.performQuery(event);
-				return resolve();
+			}, function(error, event) {
+				if (!error) {
+					resolve(self.performQuery(event));
+				} else {
+					reject(error);
+				}
 		});
+		resolve(self.SracleContract);
 	});
 }
 
