@@ -28,21 +28,37 @@ describe('All', function () {
 		});
 		it('should deploy without error', function (done) {
 			sracle.deploy().then(function(resolve){
-				console.log('Deployed');
 				done();
 			}, function(reject){
-				throw new Error('Not deployed');
+				done(reject);
 			});
 		});
-		it('should set up', function () {
+		it('should set up', function (done) {
 			sracle.deploy().then(function(resolve){
-				console.log('Deployed');
-			}).then(function(resolve){
-				sracle.setUp().then(done);
+				sracle.setUp().then(function(resolve){
+					done();
+				},function(reject){
+					done(reject);
+				});
 			});
 		});
-		it('should return nonempty text for some css on google.com', function () {
-			throw new Error('Not implemented');
+		it('should return nonempty text for some css on google.com', function (done) {
+			sracle.deploy().then(function(resolve){
+				sracle.setUp().then(function(resolve){
+					sracle.performQuery("https://google.com///h3.r[1]").then(
+						function(resolve) {
+							done();
+						},
+						function(reject) {
+							return done(reject);
+					});
+				},function(reject){
+					done(reject);
+				});
+			},function(reject){
+				throw new Error(reject);
+				return done(reject);
+			});
 		});
 		it('should return concrete text for concrete query on google.com',
 			function () {

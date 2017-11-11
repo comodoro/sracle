@@ -24,7 +24,9 @@ Sracle.prototype.deploy = function() {
 	var contract = new web3.eth.Contract(this.abi);
 	return new Promise(function(resolve, reject) {
 		web3.eth.getAccounts().then(function(accounts) {
-		console.log(accounts);
+			if (accounts.length < 1) {
+				return reject(new Error("No accounts found"));
+			}
 			contract.deploy({
 				//TODO online compile from conracts/
 				data: '0x6060604052341561000c57fe5b5b6101678061001c6000396000f30060606040526000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680637c2619291461003b575bfe5b61008b600480803590602001908201803590602001908080601f0160208091040260200160405190810160405280939291908181526020018383808284378201915050505050509190505061008d565b005b7faf809863137f7864a853025a7c4f284400c84f1803830d88ecc050c43e4072448160405180806020018281038252838181518152602001915080519060200190808383600083146100fe575b8051825260208311156100fe576020820191506020810190506020830392506100da565b505050905090810190601f16801561012a5780820380516001836020036101000a031916815260200191505b509250505060405180910390a15b505600a165627a7a723058200909502a39d8a35f0ed9ca68f1c27d9d9cef01942698c1451febe8316ddf3c590029', 
@@ -33,11 +35,11 @@ Sracle.prototype.deploy = function() {
 				//TODO choosable options
 				from: accounts[0],
 				gas: 1500000,
-				gasPrice: '30000000000000'
+				gasPrice: '20000000'
 			})
 			.on('error', function(error) {
 				console.log("Oops: " + error.message);
-				reject(error);
+				return reject(error);
 			})
 			.on('transactionHash', function(transactionHash){ 
 				console.log(transactionHash);
@@ -51,7 +53,7 @@ Sracle.prototype.deploy = function() {
 			.then(function(newContractInstance){
 				self.SracleContract = newContractInstance;
 				console.log(newContractInstance.options.address) // instance with the new contract address
-				resolve(self.SracleContract);
+				return resolve(self.SracleContract);
 			});
 		});
 	});
@@ -69,21 +71,22 @@ Sracle.prototype.setUp = function() {
 			})
 			}, function(error, event) {
 				if (!error) {
-					resolve(self.performQuery(event));
+					return resolve(self.performQuery(event));
 				} else {
-					reject(error);
+					return reject(error);
 				}
 		});
-		resolve(self.SracleContract);
 	});
 }
 
 Sracle.prototype.performQuery = function (event) {
 	console.log("Sracle performQuery");
+	var param = event.returnValues.param;
 	console.log(param);
 	return new Promise(function(resolve, reject) {
 		web3.eth.getTransaction(event.transactionHash)
 		.then(function(transaction) {
+			//TODO check value
 			var value = web3.utils.fromWei(transaction.value, 'ether');
 			var origin = transaction.from;
 			console.log("Origin: " + origin + ", value: " + value);
@@ -104,7 +107,7 @@ Sracle.prototype.performQuery = function (event) {
 				console.log(UsingSracleContract);
 				UsingSracleContract.sracleAnswer(text,  {from: web3.eth.accounts.wallet[0]});
 				console.log(text);
-				resolve();
+				return resolve(self);
 			});	
 		});
 	});
