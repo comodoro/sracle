@@ -2,12 +2,11 @@
 
 var Web3 = require('web3');
 var web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
-
-
 var request = require('request');
 var cheerio = require('cheerio');
-  
-function Sracle (existingAddress) {
+var log4js = require('log4js');
+
+function Sracle (existingAddress, logging) {
 
 	var self = this;
 	this.UsingSracle = {};
@@ -16,6 +15,13 @@ function Sracle (existingAddress) {
 	if (existingAddress !== 'undefined') {
 		this.SracleContract = new web3.eth.Contract(this.abi, existingAddress);
 	}
+	if (logging) {
+		log4js.configure({
+			appenders: { app: { type: 'file', filename: 'sracle.log' } },
+			categories: { default: { appenders: ['app'], level:logging.level } }
+		  });
+	}
+	this.logger = log4js.getLogger();
 }
 
 //TODO add requested confirmations parameter
@@ -38,21 +44,21 @@ Sracle.prototype.deploy = function() {
 				gasPrice: '20000000'
 			})
 			.on('error', function(error) {
-				console.log("Oops: " + error.message);
+				self.logger.error("Oops: " + error.message);
 				return reject(error);
 			})
 			.on('transactionHash', function(transactionHash){ 
-				console.log(transactionHash);
+				self.logger.debug("Txhash: " + transactionHash);
 			})
 			.on('receipt', function(receipt){
-				console.log(receipt.contractAddress) // contains the new contract address
+				self.logger.info(receipt.contractAddress) // contains the new contract address
 			})
 			.on('confirmation', function(confirmationNumber, receipt){ 
-				console.log(confirmationNumber);
+				self.logger.debug(confirmationNumber);
 			})
 			.then(function(newContractInstance){
 				self.SracleContract = newContractInstance;
-				console.log(newContractInstance.options.address) // instance with the new contract address
+				self.logger.info("Deployed at " + newContractInstance.options.address) // instance with the new contract address
 				return resolve(self.SracleContract);
 			});
 		});
@@ -80,33 +86,36 @@ Sracle.prototype.setUp = function() {
 }
 
 Sracle.prototype.performQuery = function (event) {
-	console.log("Sracle performQuery");
+	var self = this;
+	self.logger.trace("Sracle.performQuery");
 	var param = event.returnValues.param;
-	console.log(param);
+	self.logger.debug("Received param " + param);
 	return new Promise(function(resolve, reject) {
 		web3.eth.getTransaction(event.transactionHash)
 		.then(function(transaction) {
 			//TODO check value
 			var value = web3.utils.fromWei(transaction.value, 'ether');
 			var origin = transaction.from;
-			console.log("Origin: " + origin + ", value: " + value);
+			this.logger.debug("Origin: " + origin + ", value: " + value);
 			var cssPos = param.indexOf("///");
 			var url = param.substring(0, cssPos);
-			console.log("URL: " + url);
+			this.logger.debug("URL: " + url);
 			var css = param.substring(cssPos+3, param.length);
-			console.log("CSS: " + css);
+			this.logger.debug("CSS: " + css);
 			request(url, function (error, response, body) {
-				console.log(error);
-				if (error) reject(error);
+				if (error) {
+					self.logger.error(error);
+					reject(error);
+				}
 				//TODO support probably all 2xx and most redirects
 				if (response.statusCode != 200) reject('HTTP status code of response is not 200');
 				var $ = cheerio.load(body);
 				//TODO input checking
 				var text = $(css).text();
+				self.logger.info('CSS found: >' + text + '<');
 				var UsingSracleContract = new web3.eth.Contract(origin);
-				console.log(UsingSracleContract);
+				this.logger.debug(UsingSracleContract);
 				UsingSracleContract.sracleAnswer(text,  {from: web3.eth.accounts.wallet[0]});
-				console.log(text);
 				return resolve(self);
 			});	
 		});

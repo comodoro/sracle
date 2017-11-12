@@ -1,4 +1,6 @@
 var assert = require('assert');
+var logger = require('log4js').getLogger();
+logger.level = 'error';
 
 describe('All', function () {
 	var web3 = {}

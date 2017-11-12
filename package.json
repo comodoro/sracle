@@ -6,15 +6,17 @@
     "sracle": "./oracle.js"
   },
   "dependencies": {
-    "assert": "^1.4.1",
+    "log4js": "^2.3.11",
     "cheerio": "^1.0.0-rc.2",
-    "mocha": "^4.0.1",
     "path": "^0.12.7",
     "request": "^2.83.0",
-    "web3": "^1.0.0-beta.24",
+    "web3": "^1.0.0-beta.24"
   },
   "devDependencies": {
-    "ethereumjs-testrpc": "^4.1.3"
+    "log4js": "^2.3.11",
+    "assert": "^1.4.1",
+    "ethereumjs-testrpc": "^4.1.3",
+    "mocha": "^4.0.1"
   },
   "scripts": {
     "test": "mocha"
