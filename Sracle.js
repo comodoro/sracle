@@ -1,10 +1,10 @@
 'use strict';
 
 var Web3 = require('web3');
-var web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
+var web3 = new Web3(Web3.givenProvider || 'ws://localhost:8546');
 var request = require('request');
 var cheerio = require('cheerio');
-var log4js = require('log4js');
+var Log4js = require('log4js');
 
 function Sracle (existingAddress, logging) {
 
@@ -16,17 +16,21 @@ function Sracle (existingAddress, logging) {
 		this.SracleContract = new web3.eth.Contract(this.abi, existingAddress);
 	}
 	if (logging) {
-		log4js.configure({
+		Log4js.configure({
 			appenders: { app: { type: 'file', filename: 'sracle.log' } },
 			categories: { default: { appenders: ['app'], level:logging.level } }
 		  });
+		  this.logger = Log4js.getLogger();
+	} else {
+		this.logger = Log4js.getLogger();
+		this.logger.level = Log4js.levels.ALL; 
 	}
-	this.logger = log4js.getLogger();
 }
 
 //TODO add requested confirmations parameter
 Sracle.prototype.deploy = function() {
 	var self = this;
+	self.logger.trace('Deploying');
 	var contract = new web3.eth.Contract(this.abi);
 	return new Promise(function(resolve, reject) {
 		web3.eth.getAccounts().then(function(accounts) {
@@ -39,7 +43,7 @@ Sracle.prototype.deploy = function() {
 			})
 			.send({
 				//TODO choosable options
-				from: accounts[0],
+				from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
 				gas: 1500000,
 				gasPrice: '20000000'
 			})
@@ -67,7 +71,7 @@ Sracle.prototype.deploy = function() {
 
 Sracle.prototype.setUp = function() {
 	var self = this;
-	//TODO online compile from conracts/
+	//TODO online compile from contracts/
 	this.callbackAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"type":"function"}];
 	this.UsingSracle = new web3.eth.Contract(this.callbackAbi);
 	return new Promise(function(resolve, reject) {
@@ -77,11 +81,12 @@ Sracle.prototype.setUp = function() {
 			})
 			}, function(error, event) {
 				if (!error) {
-					return resolve(self.performQuery(event));
+					self.performQuery(event);
 				} else {
-					return reject(error);
+					self.logger.error(error);
 				}
 		});
+		resolve();
 	});
 }
 

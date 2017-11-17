@@ -1,13 +1,14 @@
 var assert = require('assert');
-var logger = require('log4js').getLogger();
-logger.level = 'error';
+var Log4js = require('log4js');
+var logger = Log4js.getLogger();
+logger.level = Log4js.levels.ALL; 
 
 describe('All', function () {
 	var web3 = {}
 	before(function () {
 		//console.log('Loading web3');
 		var Web3 = require('web3');
-		web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
+		web3 = new Web3(Web3.givenProvider || 'ws://localhost:8546');
 	});
 
 	describe('Environment', function () {
