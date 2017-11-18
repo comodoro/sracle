@@ -45,10 +45,20 @@ describe('All', function () {
 				});
 			});
 		});
-		it('should return nonempty text for some css on google.com', function (done) {
+		it('should return basic css title on google.com', function () {
+			sracle.cssQuery("https://www.google.com", "title").then(text => assert.equal(text, 'Google'));
+		});
+		it('should check hash of transaction', function (done) {
+			throw new Error('Not finished');
 			sracle.deploy().then(function(resolve){
 				sracle.setUp().then(function(resolve){
-					sracle.performQuery("https://google.com///h3.r[1]").then(
+					var mockEvent = {
+						"returnValues": {
+							"param": "https://google.com///h3.r[1]",
+							"value": "1000000000000"
+						}
+					};
+					sracle.performQuery(mockEvent).then(
 						function(resolve) {
 							done();
 						},

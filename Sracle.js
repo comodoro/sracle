@@ -90,6 +90,25 @@ Sracle.prototype.setUp = function() {
 	});
 }
 
+Sracle.prototype.cssQuery = function (url, css) {
+	var self = this;
+	this.logger.debug("CSS: " + css);
+	return new Promise(function(resolve, reject) {
+		request(url, function (error, response, body) {
+			if (error) {
+				self.logger.error(error);
+			}
+			//TODO support probably all 2xx and most redirects
+			if (response.statusCode != 200) reject('HTTP status code of response is not 200');
+			var $ = cheerio.load(body);
+			//TODO input checking
+			var text = $(css).text();
+			self.logger.info('CSS found: >' + text + '<');
+			resolve(text);
+		});
+	});
+}
+
 Sracle.prototype.performQuery = function (event) {
 	var self = this;
 	self.logger.trace("Sracle.performQuery");
@@ -106,25 +125,13 @@ Sracle.prototype.performQuery = function (event) {
 			var url = param.substring(0, cssPos);
 			this.logger.debug("URL: " + url);
 			var css = param.substring(cssPos+3, param.length);
-			this.logger.debug("CSS: " + css);
-			request(url, function (error, response, body) {
-				if (error) {
-					self.logger.error(error);
-					reject(error);
-				}
-				//TODO support probably all 2xx and most redirects
-				if (response.statusCode != 200) reject('HTTP status code of response is not 200');
-				var $ = cheerio.load(body);
-				//TODO input checking
-				var text = $(css).text();
-				self.logger.info('CSS found: >' + text + '<');
-				var UsingSracleContract = new web3.eth.Contract(origin);
-				this.logger.debug(UsingSracleContract);
-				UsingSracleContract.sracleAnswer(text,  {from: web3.eth.accounts.wallet[0]});
-				return resolve(self);
+			var text = self.cssQuery(css);
+			var UsingSracleContract = new web3.eth.Contract(origin);
+			this.logger.debug(UsingSracleContract);
+			UsingSracleContract.sracleAnswer(text,  {from: web3.eth.accounts.wallet[0]});
+			return resolve(self);
 			});	
 		});
-	});
 }
 
 module.exports = Sracle;
