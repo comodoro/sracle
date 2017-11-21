@@ -12,10 +12,9 @@ describe('All', function () {
 	});
 
 	describe('Environment', function () {
-		it('web3 should be connected', function (done) {
-			web3.eth.net.isListening().then(function (done) {
-				assert.equal(done, true);
-			}).then(done);
+		it('web3 should be connected', async () => {
+			var listening = await web3.eth.net.isListening();
+			assert.equal(listening, true);
 		});
 		it('web3 utility functions should work', function () {
 			var amount = web3.utils.toWei(1, "ether")
@@ -29,24 +28,19 @@ describe('All', function () {
 			var s = require('../Sracle');
 			sracle = new s();
 		});
-		it('should deploy without error', function (done) {
-			sracle.deploy().then(function(resolve){
-				done();
-			}, function(reject){
-				done(reject);
-			});
+		it('should deploy without error', async () => {
+			await sracle.deploy();
 		});
-		it('should set up', function (done) {
-			sracle.deploy().then(function(resolve){
-				sracle.setUp().then(function(resolve){
-					done();
-				},function(reject){
-					done(reject);
-				});
-			});
+		it('should set up', async () => {
+			await sracle.deploy();
+			await sracle.setUp();
 		});
-		it('should return basic css title on google.com', function () {
+		it('should return basic css title on google.com', () => {
 			sracle.cssQuery("https://www.google.com", "title").then(text => assert.equal(text, 'Google'));
+		});
+		it('should resolve more complex CSS on Wikipedia', () => {
+			sracle.cssQuery("https://en.wikipedia.org/wiki/Boii", "html > body > div > h1#firstHeading")
+				.then(text => assert.equal(text, 'Boii'));
 		});
 		it('should check hash of transaction', function (done) {
 			throw new Error('Not finished');
@@ -72,10 +66,6 @@ describe('All', function () {
 				throw new Error(reject);
 				return done(reject);
 			});
-		});
-		it('should return concrete text for concrete query on google.com',
-			function () {
-				throw new Error('Not implemented');
 		});
 	});
 });

@@ -5,14 +5,14 @@ var web3 = new Web3(Web3.givenProvider || 'ws://localhost:8546');
 var request = require('request');
 var cheerio = require('cheerio');
 var Log4js = require('log4js');
-
+var fs = require('fs');
 function Sracle (existingAddress, logging) {
 
 	var self = this;
 	this.UsingSracle = {};
 	//TODO online compile from conracts/
 	this.abi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"query","outputs":[],"payable":true,"type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
-	if (existingAddress !== 'undefined') {
+	if (existingAddress !== undefined) {
 		this.SracleContract = new web3.eth.Contract(this.abi, existingAddress);
 	}
 	if (logging) {
@@ -27,66 +27,68 @@ function Sracle (existingAddress, logging) {
 	}
 }
 
+Sracle.prototype.compile = async function(contractCode) {
+	var data = fs.readFileSync(contractCode, 'utf8');
+	var solc = require('solc')
+	var output = solc.compile(data, 1)
+	for (var contractName in output.contracts) {
+		this.logger.debug(contractName + ': ' + output.contracts[contractName].bytecode)
+		this.logger.debug(contractName + '; ' + JSON.parse(output.contracts[contractName].interface))
+	}
+	return output.contracts[':SracleOracle'].bytecode;
+}
+	
 //TODO add requested confirmations parameter
-Sracle.prototype.deploy = function() {
+Sracle.prototype.deploy = async function() {
 	var self = this;
 	self.logger.trace('Deploying');
 	var contract = new web3.eth.Contract(this.abi);
-	return new Promise(function(resolve, reject) {
-		web3.eth.getAccounts().then(function(accounts) {
-			if (accounts.length < 1) {
-				return reject(new Error("No accounts found"));
-			}
-			contract.deploy({
-				//TODO online compile from conracts/
-				data: '0x6060604052341561000c57fe5b5b6101678061001c6000396000f30060606040526000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680637c2619291461003b575bfe5b61008b600480803590602001908201803590602001908080601f0160208091040260200160405190810160405280939291908181526020018383808284378201915050505050509190505061008d565b005b7faf809863137f7864a853025a7c4f284400c84f1803830d88ecc050c43e4072448160405180806020018281038252838181518152602001915080519060200190808383600083146100fe575b8051825260208311156100fe576020820191506020810190506020830392506100da565b505050905090810190601f16801561012a5780820380516001836020036101000a031916815260200191505b509250505060405180910390a15b505600a165627a7a723058200909502a39d8a35f0ed9ca68f1c27d9d9cef01942698c1451febe8316ddf3c590029', 
-			})
-			.send({
-				//TODO choosable options
-				from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-				gas: 1500000,
-				gasPrice: '20000000'
-			})
-			.on('error', function(error) {
-				self.logger.error("Oops: " + error.message);
-				return reject(error);
-			})
-			.on('transactionHash', function(transactionHash){ 
-				self.logger.debug("Txhash: " + transactionHash);
-			})
-			.on('receipt', function(receipt){
-				self.logger.info(receipt.contractAddress) // contains the new contract address
-			})
-			.on('confirmation', function(confirmationNumber, receipt){ 
-				self.logger.debug(confirmationNumber);
-			})
-			.then(function(newContractInstance){
-				self.SracleContract = newContractInstance;
-				self.logger.info("Deployed at " + newContractInstance.options.address) // instance with the new contract address
-				return resolve(self.SracleContract);
-			});
-		});
+	var accounts = await web3.eth.getAccounts();
+	if (accounts.length < 1) {
+		throw new Error("No accounts found");
+	}
+	var code = await self.compile('./contracts/SracleOracle.sol');
+	contract.deploy({
+		data: '0x' + code
+	})
+	.send({
+		//TODO choosable options
+		from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+		gas: 1500000,
+		gasPrice: '20000000'
+	})
+	.on('error', function(error) {
+		throw error;
+	})
+	.on('transactionHash', function(transactionHash){
+		self.logger.debug("Txhash: " + transactionHash);
+	})
+	.on('receipt', function(receipt){
+		self.logger.info(receipt.contractAddress) // contains the new contract address
+	})
+	.on('confirmation', function(confirmationNumber, receipt){ 
+		self.logger.debug(confirmationNumber);
+	})
+	.then(function(newContractInstance){
+		self.SracleContract = newContractInstance;
+		self.logger.info("Deployed at " + newContractInstance.options.address) // instance with the new contract address
+		return self.SracleContract;
 	});
 }	
 
-Sracle.prototype.setUp = function() {
+Sracle.prototype.setUp = async function() {
 	var self = this;
 	//TODO online compile from contracts/
 	this.callbackAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"type":"function"}];
 	this.UsingSracle = new web3.eth.Contract(this.callbackAbi);
-	return new Promise(function(resolve, reject) {
-		self.SracleContract.events.SracleQuery({
-			fromBlock: web3.eth.getBlockNumber().then(function(result) {
-				return result;
-			})
-			}, function(error, event) {
-				if (!error) {
-					self.performQuery(event);
-				} else {
-					self.logger.error(error);
-				}
-		});
-		resolve();
+	self.SracleContract.events.SracleQuery({
+		fromBlock: await web3.eth.getBlockNumber()
+	}, function(error, event) {
+		if (!error) {
+			self.performQuery(event);
+		} else {
+			self.logger.error(error);
+		}
 	});
 }
 
