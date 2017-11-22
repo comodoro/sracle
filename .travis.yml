@@ -2,3 +2,13 @@ language: node_js
 node_js:
   - "8"
   - "7"
+
+cache:
+  directories:
+  - node_modules
+
+before_install:
+  - wget -P /tmp https://parity-downloads-mirror.parity.io/v1.8.3/x86_64-unknown-linux-gnu/parity
+
+before_script:
+  - /tmp/parity --config dev --gasprice 0 --unlock 0x00a329c0648769a73afac7f9381e08fb43dbea72 --password test/pwd
