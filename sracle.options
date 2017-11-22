@@ -1,0 +1,25 @@
+{
+    "logging" : {
+        "appenders": [
+            {
+            "category": "tests",
+            "type": "console",
+            "level": "ALL",
+            "appender": {
+                "type": "console",
+                "layout": {
+                    "type": "messagePassThrough"
+                }
+            }
+            }]
+    },
+    "existingAddress" : null,
+    "deployment": {
+        "from": null,
+		"gas": 1500000,
+		"gasPrice": 20000000
+    },
+    "css": {
+        "limit": 1024
+    }
+}

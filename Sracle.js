@@ -6,50 +6,62 @@ var request = require('request');
 var cheerio = require('cheerio');
 var Log4js = require('log4js');
 var fs = require('fs');
-function Sracle (existingAddress, logging) {
 
+function Sracle (options) {
 	var self = this;
 	this.UsingSracle = {};
-	//TODO online compile from conracts/
 	this.abi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"query","outputs":[],"payable":true,"type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
-	if (existingAddress !== undefined) {
+	if (options) {
+		this.options = options;
+	} else {
+		this.getDefaultOptions().then((options) => {
+			self.options = options;
+		});
+	}
+	if (options && options.existingAddress) {
 		this.SracleContract = new web3.eth.Contract(this.abi, existingAddress);
 	}
-	if (logging) {
+	if (options && options.logging) {
 		Log4js.configure({
-			appenders: { app: { type: 'file', filename: 'sracle.log' } },
-			categories: { default: { appenders: ['app'], level:logging.level } }
+			appenders: { app: { type: options.logging.type, filename: options.logging.filename } },
+			categories: { default: { appenders: ['app'], level:options.logging.level } }
 		  });
 		  this.logger = Log4js.getLogger();
 	} else {
 		this.logger = Log4js.getLogger();
-		this.logger.level = Log4js.levels.ALL; 
+		this.logger.level = Log4js.levels.getLevel("ALL"); 
 	}
 }
 
-Sracle.prototype.compile = async function(contractCode) {
-	var data = fs.readFileSync(contractCode, 'utf8');
+Sracle.prototype.getDefaultOptions = async () => {
+	var data = fs.readFileSync('sracle.options', 'utf8');
+	return JSON.parse(data);
+}
+
+Sracle.prototype.compile = async function(contractFile) {
+	var data = fs.readFileSync(contractFile, 'utf8');
 	var solc = require('solc')
 	var output = solc.compile(data, 1)
 	for (var contractName in output.contracts) {
-		this.logger.debug(contractName + ': ' + output.contracts[contractName].bytecode)
-		this.logger.debug(contractName + '; ' + JSON.parse(output.contracts[contractName].interface))
+		this.logger.trace(contractName + ': ' + output.contracts[contractName].bytecode)
+		this.logger.trace(contractName + '; ' + JSON.parse(output.contracts[contractName].interface))
 	}
-	return output.contracts[':SracleOracle'].bytecode;
+	return output.contracts;
 }
 	
 //TODO add requested confirmations parameter
 Sracle.prototype.deploy = async function() {
 	var self = this;
 	self.logger.trace('Deploying');
-	var contract = new web3.eth.Contract(this.abi);
 	var accounts = await web3.eth.getAccounts();
 	if (accounts.length < 1) {
 		throw new Error("No accounts found");
 	}
-	var code = await self.compile('./contracts/SracleOracle.sol');
+	var result = await self.compile('./contracts/SracleOracle.sol');
+	var compiledSracle = result[':SracleOracle'];
+	var contract = new web3.eth.Contract(JSON.parse(compiledSracle.interface));
 	self.SracleContract = await contract.deploy({
-		data: '0x' + code
+		data: '0x' + compiledSracle.bytecode
 	})
 	.send({
 		//TODO choosable options
@@ -75,7 +87,7 @@ Sracle.prototype.deploy = async function() {
 
 Sracle.prototype.setUp = async function() {
 	var self = this;
-	//TODO online compile from contracts/
+	//TODO online compile from contracts/UsingSracle.sol
 	this.callbackAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"type":"function"}];
 	this.UsingSracle = new web3.eth.Contract(this.callbackAbi);
 	self.SracleContract.events.SracleQuery({
@@ -102,6 +114,9 @@ Sracle.prototype.cssQuery = function (url, css) {
 			var $ = cheerio.load(body);
 			//TODO input checking
 			var text = $(css).text();
+			if (text.length > self.options.css.limit) {
+				text = text.substring(0, 1024);
+			}
 			self.logger.info('CSS found: >' + text + '<');
 			resolve(text);
 		});
