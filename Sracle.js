@@ -48,7 +48,7 @@ Sracle.prototype.deploy = async function() {
 		throw new Error("No accounts found");
 	}
 	var code = await self.compile('./contracts/SracleOracle.sol');
-	contract.deploy({
+	self.SracleContract = await contract.deploy({
 		data: '0x' + code
 	})
 	.send({
@@ -68,12 +68,9 @@ Sracle.prototype.deploy = async function() {
 	})
 	.on('confirmation', function(confirmationNumber, receipt){ 
 		self.logger.debug(confirmationNumber);
-	})
-	.then(function(newContractInstance){
-		self.SracleContract = newContractInstance;
-		self.logger.info("Deployed at " + newContractInstance.options.address) // instance with the new contract address
-		return self.SracleContract;
 	});
+	self.logger.info("Deployed at " + self.SracleContract.address) 
+	return self.SracleContract;
 }	
 
 Sracle.prototype.setUp = async function() {

@@ -24,47 +24,29 @@ describe('All', function () {
 
 	describe('oracle', function () {
 		var sracle = {};
-		before(function() {
+		before(() => {
 			var s = require('../Sracle');
 			sracle = new s();
 		});
-		it('should deploy without error', async () => {
-			await sracle.deploy();
+		describe('deployment', () => {
+			before(async () => {
+				await sracle.deploy();
+				assert.equal(sracle.SracleContract._address.length, 42);
+			});
+			it('should set up', async () => {
+				await sracle.setUp();
+				assert.equal(sracle.UsingSracle._address, null);
+			});	
 		});
-		it('should set up', async () => {
-			await sracle.deploy();
-			await sracle.setUp();
-		});
-		it('should return basic css title on google.com', () => {
-			sracle.cssQuery("https://www.google.com", "title").then(text => assert.equal(text, 'Google'));
-		});
-		it('should resolve more complex CSS on Wikipedia', () => {
-			sracle.cssQuery("https://en.wikipedia.org/wiki/Boii", "html > body > div > h1#firstHeading")
-				.then(text => assert.equal(text, 'Boii'));
-		});
-		it('should check hash of transaction', function (done) {
-			throw new Error('Not finished');
-			sracle.deploy().then(function(resolve){
-				sracle.setUp().then(function(resolve){
-					var mockEvent = {
-						"returnValues": {
-							"param": "https://google.com///h3.r[1]",
-							"value": "1000000000000"
-						}
-					};
-					sracle.performQuery(mockEvent).then(
-						function(resolve) {
-							done();
-						},
-						function(reject) {
-							return done(reject);
-					});
-				},function(reject){
-					done(reject);
-				});
-			},function(reject){
-				throw new Error(reject);
-				return done(reject);
+		describe('CSS', () => {
+			it('should return basic css title on google.com', async () => {
+				var text = await sracle.cssQuery("https://www.google.com", "title");
+				assert.equal(text, 'Google');
+			});
+			it('should resolve more complex CSS on Wikipedia', async () => {
+				var text = await sracle.cssQuery("https://en.wikipedia.org/wiki/Boii", 
+				"html > body > div > h1#firstHeading");
+				assert.equal(text, 'Boii');
 			});
 		});
 	});
