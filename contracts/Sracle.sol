@@ -1,9 +1,9 @@
 //Sracle oracle interface
 //To be used in the calling contract
-pragma solidity ^0.4.7;
+pragma solidity ^0.4.11;
 
 contract Sracle {
 
-    function query(string param) payable;
+    function cssQuery(string param) external payable;
 
 }

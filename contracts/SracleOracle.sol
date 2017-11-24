@@ -1,15 +1,15 @@
 //The actual oracle smart contract
 //To be instantiated on the blockchain
-pragma solidity ^0.4.7;
+pragma solidity ^0.4.11;
 
 contract SracleOracle {
 
-function query(string param) 
-    payable 
-{
-    SracleQuery(param);
-}
+    function cssQuery(string param) 
+        external payable 
+    {
+        SracleQuery(param);
+    }
 
-event SracleQuery(string param);
+    event SracleQuery(string param);
 
 }
