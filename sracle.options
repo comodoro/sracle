@@ -1,17 +1,14 @@
 {
     "logging" : {
-        "appenders": [
-            {
-            "category": "tests",
-            "type": "console",
-            "level": "ALL",
-            "appender": {
-                "type": "console",
-                "layout": {
-                    "type": "messagePassThrough"
-                }
+        "appenders": {
+            "out":{ "type": "console" }
+        },
+        "categories": {
+            "default": { 
+                "appenders": ["out"], 
+                "level": "error" 
             }
-            }]
+        }
     },
     "existingAddress" : null,
     "deployment": {

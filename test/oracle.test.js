@@ -31,12 +31,12 @@ describe('All', function () {
 			it('should deploy', async () => {
 				await sracle.deploy();
 				assert.equal(sracle.SracleContract._address.length, 42);
-			});
+			}).timeout(30000);
 			it('should set up', async () => {
 				await sracle.deploy();
 				await sracle.setUp();
 				assert.equal(sracle.UsingSracle._address, null);
-			});	
+			}).timeout(60000);	
 			it('should load default options', async () => {
 				var options = await sracle.getDefaultOptions();
 				assert.notEqual(options.logging, undefined);

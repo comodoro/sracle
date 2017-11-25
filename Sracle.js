@@ -7,30 +7,37 @@ var cheerio = require('cheerio');
 var Log4js = require('log4js');
 var fs = require('fs');
 
-function Sracle (options) {
+function Sracle (customOptions) {
 	var self = this;
-	this.UsingSracle = {};
-	this.abi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"query","outputs":[],"payable":true,"type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
-	if (options) {
-		this.options = options;
-	} else {
-		this.getDefaultOptions().then((options) => {
-			self.options = options;
-		});
+	this.interfaceAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}];
+	this.UsingSracle = new web3.eth.Contract(this.interfaceAbi);
+	this.fullOracleAbi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"cssQuery","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
+    //always read default options
+	this.getDefaultOptions().then((options) => {
+		self._checkOptions(options);
+		if (!options.deployment.from) {
+			web3.eth.getAccounts().then((accounts) => {
+				options.deployment.from = accounts[0];
+			});
+		}
+		self.options = options;
+		Object.assign(self.options, customOptions);
+		self.SracleContract = new web3.eth.Contract(self.fullOracleAbi, self.options.existingAddress);
+		Log4js.configure(self.options.logging);	
+		self.logger = Log4js.getLogger();
+	});
+}
+
+Sracle.prototype._checkOptions = function (options) {
+	if (!options.existingAddress) {
+		options.existingAddress = undefined;
 	}
-	if (options && options.existingAddress) {
-		this.SracleContract = new web3.eth.Contract(this.abi, existingAddress);
-	}
-	if (options && options.logging) {
-		Log4js.configure({
-			appenders: { app: { type: options.logging.type, filename: options.logging.filename } },
-			categories: { default: { appenders: ['app'], level:options.logging.level } }
-		  });
-		  this.logger = Log4js.getLogger();
-	} else {
-		this.logger = Log4js.getLogger();
-		this.logger.level = Log4js.levels.getLevel("ALL"); 
-	}
+	if (!options.logging) {
+		throw new Error('Logging options not found');
+	} 
+	if (!options.css) {
+		throw new Error('CSS options not found');
+	} 
 }
 
 Sracle.prototype.getDefaultOptions = async () => {
@@ -43,8 +50,13 @@ Sracle.prototype.compile = async function(contractFile) {
 	var solc = require('solc')
 	var output = solc.compile(data, 1)
 	for (var contractName in output.contracts) {
-		this.logger.trace(contractName + ': ' + output.contracts[contractName].bytecode)
-		this.logger.trace(contractName + '; ' + JSON.parse(output.contracts[contractName].interface))
+		this.logger.trace('Compiled: ' + contractName + ': ' + output.contracts[contractName].bytecode)
+		this.logger.trace('ABI: ' + contractName + '; ' + JSON.parse(output.contracts[contractName].interface))
+	}
+	if (output.errors && (output.errors.length > 0)) {
+		var e = new Error('Errors compiling contract ' + contractFile);
+		e.errors = output.errors;
+		throw e;
 	}
 	return output.contracts;
 }
@@ -60,15 +72,11 @@ Sracle.prototype.deploy = async function() {
 	var result = await self.compile('./contracts/SracleOracle.sol');
 	var compiledSracle = result[':SracleOracle'];
 	var contract = new web3.eth.Contract(JSON.parse(compiledSracle.interface));
+	var deployOptions = self.options.deployment;
 	self.SracleContract = await contract.deploy({
 		data: '0x' + compiledSracle.bytecode
 	})
-	.send({
-		//TODO choosable options
-		from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-		gas: 1500000,
-		gasPrice: '20000000'
-	})
+	.send(deployOptions)
 	.on('error', function(error) {
 		throw error;
 	})
@@ -88,9 +96,7 @@ Sracle.prototype.deploy = async function() {
 Sracle.prototype.setUp = async function() {
 	var self = this;
 	//TODO online compile from contracts/UsingSracle.sol
-	this.callbackAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"type":"function"}];
-	this.UsingSracle = new web3.eth.Contract(this.callbackAbi);
-	self.SracleContract.events.SracleQuery({
+	this.SracleContract.events.SracleQuery({
 		fromBlock: await web3.eth.getBlockNumber()
 	}, function(error, event) {
 		if (!error) {
@@ -123,29 +129,27 @@ Sracle.prototype.cssQuery = function (url, css) {
 	});
 }
 
-Sracle.prototype.performQuery = function (event) {
-	var self = this;
-	self.logger.trace("Sracle.performQuery");
+Sracle.prototype.performQuery = async function (event) {
+	this.logger.trace("Sracle.performQuery");
 	var param = event.returnValues.param;
-	self.logger.debug("Received param " + param);
-	return new Promise(function(resolve, reject) {
-		web3.eth.getTransaction(event.transactionHash)
-		.then(function(transaction) {
-			//TODO check value
-			var value = web3.utils.fromWei(transaction.value, 'ether');
-			var origin = transaction.from;
-			this.logger.debug("Origin: " + origin + ", value: " + value);
-			var cssPos = param.indexOf("///");
-			var url = param.substring(0, cssPos);
-			this.logger.debug("URL: " + url);
-			var css = param.substring(cssPos+3, param.length);
-			var text = self.cssQuery(css);
-			var UsingSracleContract = new web3.eth.Contract(origin);
-			this.logger.debug(UsingSracleContract);
-			UsingSracleContract.sracleAnswer(text,  {from: web3.eth.accounts.wallet[0]});
-			return resolve(self);
-			});	
-		});
+	this.logger.debug("Received param " + param);
+	var transaction = await web3.eth.getTransaction(event.transactionHash);
+	//TODO check value
+	var origin = transaction.from;
+	this.logger.debug("Origin: " + origin + ", value: " + transaction.value);
+	var cssPos = param.indexOf("///");
+	if (cssPos < 0) {
+		throw new Error('CSS after /// not found in query');
+	}
+	var url = param.substring(0, cssPos);
+	this.logger.debug("URL: " + url);
+	var css = param.substring(cssPos+3, param.length);
+	var text = await this.cssQuery(url, css);
+	var flags = 0;
+	var UsingSracleContract = new web3.eth.Contract(this.interfaceAbi, origin);
+	this.logger.debug(UsingSracleContract);
+	UsingSracleContract.methods.sracleAnswer(text, flags).send(this.options.deployment);
+	return;
 }
 
 module.exports = Sracle;

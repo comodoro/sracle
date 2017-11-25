@@ -16,12 +16,15 @@ contract Sracle {
 
 contract SracleTest is UsingSracle {
 
+	string answer;
+
 	function test(address sracleAddress) external payable {
-		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///#mw-content-text > p[1]"); 
+		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///title"); 
 	}
 
-	function sracleAnswer(string answer, uint flags) external {
-		if (flags != 0) {
+	function sracleAnswer(string _answer, uint _flags) external {
+		answer = _answer;
+		if (_flags != 0) {
 			ErrorEvent(answer);
 		} else {
 			TestEvent(answer);
