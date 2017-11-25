@@ -10,22 +10,22 @@ var fs = require('fs');
 function Sracle (customOptions) {
 	var self = this;
 	this.interfaceAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}];
+	this.sracleAnswer = web3.eth.abi.encodeFunctionSignature('sracleAnswer(string,uint256)');
 	this.UsingSracle = new web3.eth.Contract(this.interfaceAbi);
 	this.fullOracleAbi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"cssQuery","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
     //always read default options
-	this.getDefaultOptions().then((options) => {
+	var options = this.getDefaultOptions();
 		self._checkOptions(options);
-		if (!options.deployment.from) {
-			web3.eth.getAccounts().then((accounts) => {
-				options.deployment.from = accounts[0];
-			});
-		}
 		self.options = options;
 		Object.assign(self.options, customOptions);
 		self.SracleContract = new web3.eth.Contract(self.fullOracleAbi, self.options.existingAddress);
 		Log4js.configure(self.options.logging);	
 		self.logger = Log4js.getLogger();
-	});
+		if (!options.deployment.from) {
+			web3.eth.getAccounts().then((accounts) => {
+				self.options.deployment.from = accounts[0];
+			});
+		}
 }
 
 Sracle.prototype._checkOptions = function (options) {
@@ -40,7 +40,7 @@ Sracle.prototype._checkOptions = function (options) {
 	} 
 }
 
-Sracle.prototype.getDefaultOptions = async () => {
+Sracle.prototype.getDefaultOptions = () => {
 	var data = fs.readFileSync('sracle.options', 'utf8');
 	return JSON.parse(data);
 }
@@ -146,10 +146,27 @@ Sracle.prototype.performQuery = async function (event) {
 	var css = param.substring(cssPos+3, param.length);
 	var text = await this.cssQuery(url, css);
 	var flags = 0;
-	var UsingSracleContract = new web3.eth.Contract(this.interfaceAbi, origin);
-	this.logger.debug(UsingSracleContract);
-	UsingSracleContract.methods.sracleAnswer(text, flags).send(this.options.deployment);
-	return;
+	var answerData = this.options.deployment;
+	answerData.data = this.sracleAnswer + web3.eth.abi.encodeParameter('string', text)
+	+ web3.eth.abi.encodeParameter('uint256', flags);
+	var self = this;
+	await web3.currentProvider.send({
+		method: "trace_replayTransaction",
+		params: [event.transactionHash, ['trace']],
+		jsonrpc: "2.0",
+		id: "1"
+	}, function (err, result) {
+	   self.logger.trace('Transaction trace: ' + result);
+	   if (err) throw err;
+	   if ((!result.result.trace) || (result.result.trace.length < 1) || (!result.result.trace[0].action)) {
+		   throw new Error('Cannot gedt last contract from trace');
+	   }
+	   var origin = result.result.trace[result.result.trace.length - 1].action.from;
+	   var UsingSracleContract = new web3.eth.Contract(self.interfaceAbi, origin);
+	   UsingSracleContract.methods.sracleAnswer(text, flags).send(self.options.deployment);
+	   self.logger.debug(UsingSracleContract);
+});
+	//web3.eth.sendTransaction(origin, answerData);
 }
 
 module.exports = Sracle;

@@ -61,5 +61,37 @@ describe('All', function () {
 				assert.equal(text.length, 1024);
 			});
 		});
+		describe('Running', () => {
+			var deployedContract = {};
+			before(async () => {
+				var compiledTest = await sracle.compile('contracts/SracleTest.sol');
+				var testContractData = compiledTest[':SracleTest'];
+				var testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
+				deployedContract = await testContract.deploy({
+					data: '0x' + testContractData.bytecode
+				})
+				.send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});
+			});
+			it('should answer a transaction', (done) => {
+				deployedContract.events.TestEvent({
+					fromBlock: 0
+				}, function(error, event) {
+					done(error);
+				});
+				deployedContract.methods.test(sracle.SracleContract._address).send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000',
+					value: '1000000000000000000'
+				});
+			}).timeout(60000);
+		});		
 	});
 });

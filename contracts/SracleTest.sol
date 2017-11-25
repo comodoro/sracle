@@ -22,6 +22,10 @@ contract SracleTest is UsingSracle {
 		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///title"); 
 	}
 
+	function testInvalidCSS(address sracleAddress) external payable {
+		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
+	}
+
 	function sracleAnswer(string _answer, uint _flags) external {
 		answer = _answer;
 		if (_flags != 0) {
