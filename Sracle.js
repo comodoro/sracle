@@ -123,7 +123,12 @@ Sracle.prototype.cssQuery = function (url, css) {
 			if (response.statusCode != 200) reject('HTTP status code of response is not 200');
 			var $ = cheerio.load(body);
 			//TODO input checking
-			var text = $(css).text();
+			var text = "";
+			try {
+				text = $(css).text();
+			} catch(e) {
+				reject(e);
+			}
 			if (text.length > self.options.css.limit) {
 				text = text.substring(0, 1024);
 			}
@@ -138,7 +143,9 @@ Sracle.prototype.performQuery = async function (event) {
 	var param = event.returnValues.param;
 	this.logger.debug("Received param " + param);
 	var transaction = await web3.eth.getTransaction(event.transactionHash);
-	//TODO check value
+	if (transaction.value < this.options.pricing.threshold) {
+		return;
+	}
 	var origin = transaction.from;
 	this.logger.debug("Origin: " + origin + ", value: " + transaction.value);
 	var cssPos = param.indexOf("///");
@@ -148,8 +155,13 @@ Sracle.prototype.performQuery = async function (event) {
 	var url = param.substring(0, cssPos);
 	this.logger.debug("URL: " + url);
 	var css = param.substring(cssPos+3, param.length);
-	var text = await this.cssQuery(url, css);
 	var flags = 0;
+	var text = "";
+	try {
+		text = await this.cssQuery(url, css);
+	} catch(e) {
+		flags = 1;
+	}
 	var answerData = this.options.deployment;
 	answerData.data = this.sracleAnswer + web3.eth.abi.encodeParameter('string', text)
 	+ web3.eth.abi.encodeParameter('uint256', flags);

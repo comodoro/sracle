@@ -42,6 +42,7 @@ describe('All', function () {
 				assert.notEqual(options.logging, undefined);
 				assert.notEqual(options.deployment, undefined);
 				assert.notEqual(options.css, undefined);
+				assert.notEqual(options.pricing, undefined);
 				assert.equal(options.nonExistingOption, undefined);
 			});	
 		});
@@ -62,12 +63,25 @@ describe('All', function () {
 			});
 		});
 		describe('Running', () => {
-			var deployedContract = {};
+			var deployedContract1 = {};
+			var deployedContract2 = {};
+			var deployedContract3 = {};
 			before(async () => {
 				var compiledTest = await sracle.compile('contracts/SracleTest.sol');
 				var testContractData = compiledTest[':SracleTest'];
 				var testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
-				deployedContract = await testContract.deploy({
+				deployedContract1 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode
+				})
+				.send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});				
+				deployedContract2 = await testContract.deploy({
 					data: '0x' + testContractData.bytecode
 				})
 				.send({
@@ -78,20 +92,69 @@ describe('All', function () {
 				.on('error', function(error) {
 					throw error;
 				});
+				deployedContract3 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode
+				})
+				.send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});			
 			});
 			it('should answer a transaction', (done) => {
-				deployedContract.events.TestEvent({
+				deployedContract1.events.TestEvent({
 					fromBlock: 0
 				}, function(error, event) {
 					done(error);
 				});
-				deployedContract.methods.test(sracle.SracleContract._address).send({
+				deployedContract1.methods.test(sracle.SracleContract._address).send({
 					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
 					gas: 1500000,
 					gasPrice: '20000000',
 					value: '1000000000000000000'
 				});
 			}).timeout(60000);
+			it('should correctly return error on invalid CSS', (done) => {
+				deployedContract2.events.TestEvent({
+					fromBlock: 0
+				}, function(error, event) {
+					done(new Error('TestEvent returned on invalid CSS'));
+				});
+				deployedContract2.events.ErrorEvent({
+					fromBlock: 0
+				}, function(error, event) {
+					done(error);
+				});				
+				deployedContract2.methods.testInvalidCSS(sracle.SracleContract._address).send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000',
+					value: '1000000000000000000'
+				});
+			}).timeout(60000);
+			it('should not return anything (time out) on too low a transaction value', (done) => {
+				deployedContract3.events.TestEvent({
+					fromBlock: 0
+				}, function(error, event) {
+					done(new Error('TestEvent returned on too low transaction value'));
+				});
+				deployedContract3.events.ErrorEvent({
+					fromBlock: 0
+				}, function(error, event) {
+					done(new Error('ErrorEvent returned on too low transaction value'));
+				});				
+				deployedContract3.methods.test(sracle.SracleContract._address).send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000',
+					//1 wei
+					value: '1'
+				});
+				setTimeout(done, 10000);
+			}).timeout(11000);
 		});		
 	});
 });
