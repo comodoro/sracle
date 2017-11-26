@@ -15,17 +15,18 @@ function Sracle (customOptions) {
 	this.fullOracleAbi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"cssQuery","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
     //always read default options
 	var options = this.getDefaultOptions();
-		self._checkOptions(options);
-		self.options = options;
-		Object.assign(self.options, customOptions);
-		self.SracleContract = new web3.eth.Contract(self.fullOracleAbi, self.options.existingAddress);
-		Log4js.configure(self.options.logging);	
-		self.logger = Log4js.getLogger();
-		if (!options.deployment.from) {
-			web3.eth.getAccounts().then((accounts) => {
-				self.options.deployment.from = accounts[0];
-			});
-		}
+	self._checkOptions(options);
+	self.options = options;
+	Object.assign(self.options, customOptions);
+	self.SracleContract = new web3.eth.Contract(self.fullOracleAbi, self.options.existingAddress);
+	Log4js.configure(self.options.logging);	
+	self.logger = Log4js.getLogger();
+	if (!options.deployment.from) {
+		web3.eth.getAccounts().then((accounts) => {
+			//runs async
+			web3.eth.defaultAccount = accounts[0];
+		});
+	}
 }
 
 Sracle.prototype._checkOptions = function (options) {
@@ -73,6 +74,9 @@ Sracle.prototype.deploy = async function() {
 	var compiledSracle = result[':SracleOracle'];
 	var contract = new web3.eth.Contract(JSON.parse(compiledSracle.interface));
 	var deployOptions = self.options.deployment;
+	if (!deployOptions.from) {
+		self.options.deployment.from = accounts[0];
+	}
 	self.SracleContract = await contract.deploy({
 		data: '0x' + compiledSracle.bytecode
 	})
