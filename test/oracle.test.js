@@ -15,9 +15,22 @@ describe('All', function () {
 			var listening = await web3.eth.net.isListening();
 			assert.equal(listening, true);
 		});
+		it('dev account should exist', async () => {
+			var accounts = await web3.eth.getAccounts();
+			var exists = accounts.includes('0x00a329c0648769A73afAc7F9381E08FB43dBEA72');
+			assert.equal(exists, true);
+		});
+		// it('dev account should be possible to unlock', async () => {
+		// 	try {
+		// 		var unlocked = await web3.eth.personal.unlockAccount('0x00a329c0648769A73afAc7F9381E08FB43dBEA72', '', 100);				
+		// 	} catch(e) {
+		// 		throw e;
+		// 	}
+		// 	assert.equal(unlocked, true);
+		// });
 		it('web3 utility functions should work', function () {
-			var amount = web3.utils.toWei(1, "ether")
-			assert.equal(web3.utils.fromWei(amount), 1);
+			var amount = web3.utils.toWei("1", "ether")
+			assert.equal(web3.utils.fromWei(amount.toString()), 1);
 		});
 	});
 
