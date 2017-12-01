@@ -10,8 +10,6 @@ var fs = require('fs');
 function Sracle (customOptions) {
 	var self = this;
 	this.interfaceAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}];
-	this.sracleAnswer = web3.eth.abi.encodeFunctionSignature('sracleAnswer(string,uint256)');
-	this.UsingSracle = new web3.eth.Contract(this.interfaceAbi);
 	this.fullOracleAbi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"cssQuery","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
     //always read default options
 	var options = this.getDefaultOptions();
@@ -97,6 +95,46 @@ Sracle.prototype.deploy = async function() {
 	return self.SracleContract;
 }	
 
+Sracle.prototype.getClient = function() {
+	return new Promise(resolve => {
+		web3.currentProvider.send({
+			method: "web3_clientVersion",
+			params: [],
+			jsonrpc: "2.0",
+			id: "1"
+		}, (err, result) => {
+			if (result.result.includes('Parity')) {
+				resolve('parity');
+			} else if ((result.result.includes('Mist')) || (result.result.includes('Geth'))) {
+				resolve('geth');
+			} else resolve(result.result);
+		});
+	});
+}
+
+Sracle.prototype.getOrigin = function(client, transactionHash) {
+	var self = this;
+	if (client == 'parity') {
+		return new Promise(resolve => {
+			web3.currentProvider.send({
+				method: "trace_replayTransaction",
+				params: [transactionHash, ['trace']],
+				jsonrpc: "2.0",
+				id: "2"
+			}, function (err, result) {
+				self.logger.trace('Transaction trace: ' + result);
+				if (err) throw err;
+				if ((!result.result.trace) || (result.result.trace.length < 1) || (!result.result.trace[0].action)) {
+					throw new Error('Cannot get last contract from trace');
+				}
+				resolve(result.result.trace[result.result.trace.length - 1].action.from);
+			});	
+		});
+	} else {
+		throw new Error('Unsupported client: ' + client);
+	}
+}
+
 Sracle.prototype.setUp = async function() {
 	var self = this;
 	//TODO online compile from contracts/UsingSracle.sol
@@ -119,8 +157,10 @@ Sracle.prototype.cssQuery = function (url, css) {
 			if (error) {
 				self.logger.error(error);
 			}
-			//TODO support probably all 2xx and most redirects
-			if (response.statusCode != 200) reject('HTTP status code of response is not 200');
+			//TODO support probably most redirects
+			if ((response.statusCode < 200) || (response.statusCode >= 300)) {
+				reject('HTTP status code of response is not 200');
+			}
 			var $ = cheerio.load(body);
 			//TODO input checking
 			var text = "";
@@ -146,8 +186,8 @@ Sracle.prototype.performQuery = async function (event) {
 	if (transaction.value < this.options.pricing.threshold) {
 		return;
 	}
-	var origin = transaction.from;
-	this.logger.debug("Origin: " + origin + ", value: " + transaction.value);
+	var sender = transaction.from;
+	this.logger.debug("Initial sender: " + sender + ", value: " + transaction.value);
 	var cssPos = param.indexOf("///");
 	if (cssPos < 0) {
 		throw new Error('CSS after /// not found in query');
@@ -162,27 +202,11 @@ Sracle.prototype.performQuery = async function (event) {
 	} catch(e) {
 		flags = 1;
 	}
-	var answerData = this.options.deployment;
-	answerData.data = this.sracleAnswer + web3.eth.abi.encodeParameter('string', text)
-	+ web3.eth.abi.encodeParameter('uint256', flags);
-	var self = this;
-	await web3.currentProvider.send({
-		method: "trace_replayTransaction",
-		params: [event.transactionHash, ['trace']],
-		jsonrpc: "2.0",
-		id: "1"
-	}, function (err, result) {
-	   self.logger.trace('Transaction trace: ' + result);
-	   if (err) throw err;
-	   if ((!result.result.trace) || (result.result.trace.length < 1) || (!result.result.trace[0].action)) {
-		   throw new Error('Cannot gedt last contract from trace');
-	   }
-	   var origin = result.result.trace[result.result.trace.length - 1].action.from;
-	   var UsingSracleContract = new web3.eth.Contract(self.interfaceAbi, origin);
-	   UsingSracleContract.methods.sracleAnswer(text, flags).send(self.options.deployment);
-	   self.logger.debug(UsingSracleContract);
-});
-	//web3.eth.sendTransaction(origin, answerData);
+	var client = await this.getClient();
+	var origin = await this.getOrigin(client, transaction.hash);
+	var UsingSracleContract = new web3.eth.Contract(this.interfaceAbi, origin);
+	UsingSracleContract.methods.sracleAnswer(text, flags).send(this.options.deployment);
+	this.logger.debug(UsingSracleContract);
 }
 
 module.exports = Sracle;

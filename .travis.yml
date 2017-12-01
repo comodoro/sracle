@@ -12,5 +12,7 @@ before_install:
   - chmod a+x /tmp/parity
 
 before_script:
-  - timeout 20s  /tmp/parity --mode offline --config dev
+  #run once to generate the dev account
+  - timeout 20s  /tmp/parity --mode offline --config dev || true
+  - sleep 5
   - /tmp/parity --mode offline --config dev --gasprice 0 --unlock 0x00a329c0648769a73afac7f9381e08fb43dbea72 --password test/pwd

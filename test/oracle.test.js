@@ -8,7 +8,7 @@ describe('All', function () {
 	before(function () {
 		var Web3 = require('web3');
 		web3 = new Web3(Web3.givenProvider || 'ws://localhost:8546');
-	});
+    });
 
 	describe('Environment', function () {
 		it('web3 should be connected', async () => {
@@ -48,7 +48,6 @@ describe('All', function () {
 			it('should set up', async () => {
 				await sracle.deploy();
 				await sracle.setUp();
-				assert.equal(sracle.UsingSracle._address, null);
 			}).timeout(60000);	
 			it('should load default options', async () => {
 				var options = await sracle.getDefaultOptions();
@@ -57,6 +56,10 @@ describe('All', function () {
 				assert.notEqual(options.css, undefined);
 				assert.notEqual(options.pricing, undefined);
 				assert.equal(options.nonExistingOption, undefined);
+			});	
+			it('should correctly detect Parity', async () => {
+				var client = await sracle.getClient();
+				assert.equal(client, 'parity');
 			});	
 		});
 		describe('CSS', () => {
@@ -76,6 +79,7 @@ describe('All', function () {
 			});
 		});
 		describe('Running', () => {
+			var deployedContract0 = {};
 			var deployedContract1 = {};
 			var deployedContract2 = {};
 			var deployedContract3 = {};
@@ -83,6 +87,17 @@ describe('All', function () {
 				var compiledTest = await sracle.compile('contracts/SracleTest.sol');
 				var testContractData = compiledTest[':SracleTest'];
 				var testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
+				deployedContract0 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode
+				})
+				.send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});
 				deployedContract1 = await testContract.deploy({
 					data: '0x' + testContractData.bytecode
 				})
@@ -117,6 +132,18 @@ describe('All', function () {
 					throw error;
 				});			
 			});
+			it('should detect calling contract address', (done) => {
+				deployedContract0.methods.test(sracle.SracleContract.options.address).send({
+					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+					gas: 1500000,
+					gasPrice: '20000000',
+					value: '1000000000000000000'
+				}).then(function(receipt){
+					sracle.getOrigin('parity', receipt.transactionHash).then((origin) => {
+						assert.equal(origin.toLowerCase(), deployedContract0.options.address.toLowerCase());
+					}).then(done);
+				});
+			}).timeout(10000);
 			it('should answer a transaction', (done) => {
 				deployedContract1.events.TestEvent({
 					fromBlock: 0
