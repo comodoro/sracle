@@ -10,6 +10,7 @@ var fs = require('fs');
 function Sracle (customOptions) {
 	var self = this;
 	this.interfaceAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}];
+	this.UsingSracleContract = new web3.eth.Contract(this.interfaceAbi, '0x00a329c0648769a73afac7f9381e08fb43dbea72');
 	this.fullOracleAbi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"cssQuery","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
     //always read default options
 	var options = this.getDefaultOptions();
@@ -112,6 +113,54 @@ Sracle.prototype.getClient = function() {
 	});
 }
 
+Sracle.prototype.calculateGasPrice = function() {
+	var self = this;
+	return new Promise(function(resolve, reject) {
+		if (self.options.pricing.type == 'ethgasstation') {
+			self.getGasPriceFromEthgasstation().then(gasPrice => {
+				resolve(web3.utils.toWei(gasPrice, "gwei"));
+			});
+		} else if (self.options.pricing.type == 'fixed') {
+			resolve(self.options.pricing.value);
+		}
+	});
+}
+
+Sracle.prototype.getGasPriceFromEthgasstation = function() {
+	var self = this;
+	return new Promise(function(resolve, reject) {
+		request('https://ethgasstation.info/', function (error, response, body) {
+			if (error) {
+				self.logger.error(error);
+				throw error;
+			}
+			if ((response.statusCode < 200) || (response.statusCode >= 300)) {
+				reject('HTTP status code of EthGasStation response is not 200');
+			}
+			//TODO This is too fragile
+			var css = '';
+			if ((!self.options.pricing.options) || (self.options.pricing.options == 'standard')) {
+				css = 'div.right_col > div.row.tile_count > div.col-md-2.col-sm-4.col-xs-6.tile_stats_count:nth-child(2) > div.count';
+			} else if (self.options.pricing.options == 'low') {
+				css = 'div.right_col > div.row.tile_count > div.col-md-2.col-sm-4.col-xs-6.tile_stats_count:nth-child(4) > div.count';
+			} else {
+				reject(new Error('Bad pricing option: ' + self.options.pricing.options));
+			}
+			var $ = cheerio.load(body);
+			var text = "";
+			try {
+				text = $(css).text();
+			} catch(e) {
+				reject(e);
+			}
+			if (!text.match('^[0-9]+\.?[0-9]*$')) {
+				reject(new Error('Did not get a number from EthGasStation'));
+			}
+			resolve(text);
+		});
+	});
+}
+
 Sracle.prototype.getOrigin = function(client, transactionHash) {
 	var self = this;
 	if (client == 'parity') {
@@ -183,7 +232,9 @@ Sracle.prototype.performQuery = async function (event) {
 	var param = event.returnValues.param;
 	this.logger.debug("Received param " + param);
 	var transaction = await web3.eth.getTransaction(event.transactionHash);
-	if (transaction.value < this.options.pricing.threshold) {
+	var requiredGas = await this.calculateGasPrice() * await this.UsingSracleContract.methods.sracleAnswer('', 0).estimateGas();
+	if (transaction.value < requiredGas) {
+		this.logger.warn('No action because transaction value received (' + transaction.value + ') is below the required value (' + requiredGas + ')');
 		return;
 	}
 	var sender = transaction.from;

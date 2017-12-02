@@ -20,6 +20,23 @@
         "limit": 1024
     },
     "pricing": {
-        "threshold": 10000000000000
+        "type": "ethgasstation",
+        "options": "standard",
+        "value": "1.5"
+    },
+    "_alternative_pricing": {
+        "type": "fixed",
+        "options": "standard",
+        "value": "11000000000"
+    },
+    "answerGas": {
+        "type": "ethgasstation",
+        "options": "standard",
+        "value": "1.0"
+    },
+    "_alte4rnative_answerGas": {
+        "type": "fixed",
+        "options": "standard",
+        "value": "10000000000"
     }
 }

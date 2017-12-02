@@ -132,8 +132,25 @@ describe('All', function () {
 					throw error;
 				});			
 			});
+			it('should retrieve gas from EthGasStation', async () => {
+				sracle.options.pricing =  {
+					"type": "ethgasstation",
+					"options": "low",
+					"value": "1.5"			
+				};
+				var low = await sracle.getGasPriceFromEthgasstation();
+				assert.equal(low.length > 0, true);
+				sracle.options.pricing =  {
+					"type": "ethgasstation",
+					"options": "standard",
+					"value": "1.5"			
+				};
+				var standard = await sracle.getGasPriceFromEthgasstation();
+				assert.equal(standard.length > 0, true);
+				assert.equal(standard > low, true);
+			});
 			it('should detect calling contract address', (done) => {
-				deployedContract0.methods.test(sracle.SracleContract.options.address).send({
+					deployedContract0.methods.test(sracle.SracleContract.options.address).send({
 					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
 					gas: 1500000,
 					gasPrice: '20000000',
@@ -185,7 +202,8 @@ describe('All', function () {
 					fromBlock: 0
 				}, function(error, event) {
 					done(new Error('ErrorEvent returned on too low transaction value'));
-				});				
+				});	
+				sracle.options.pricing = sracle.options._alternative_pricing;
 				deployedContract3.methods.test(sracle.SracleContract._address).send({
 					from: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
 					gas: 1500000,
