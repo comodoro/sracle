@@ -6,6 +6,8 @@ var request = require('request');
 var cheerio = require('cheerio');
 var Log4js = require('log4js');
 var fs = require('fs');
+//May not be the best tool for the job
+var cssLint = require('csslint')
 
 function Sracle (customOptions) {
 	var self = this;
@@ -196,6 +198,20 @@ Sracle.prototype.setUp = async function() {
 			self.logger.error(error);
 		}
 	});
+}
+
+Sracle.prototype.checkCSS = function(css) {
+	var result = cssLint.CSSLint.verify(css + '{}');
+	var errorCode = 0;
+	for (let i = 0;i < result.messages.length;i++) {
+		if (result.messages[i].type == 'error') {
+			errorCode += 1;
+		}
+	};
+	return {
+		'errorCode' : errorCode,
+		'messages': result.messages
+	};
 }
 
 Sracle.prototype.cssQuery = function (url, css) {

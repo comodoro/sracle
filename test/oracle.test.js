@@ -48,7 +48,7 @@ describe('All', function () {
 			it('should set up', async () => {
 				await sracle.deploy();
 				await sracle.setUp();
-			}).timeout(60000);	
+			}).timeout(31000);	
 			it('should load default options', async () => {
 				var options = await sracle.getDefaultOptions();
 				assert.notEqual(options.logging, undefined);
@@ -77,13 +77,23 @@ describe('All', function () {
 				"html > body > div");
 				assert.equal(text.length, 1024);
 			});
+			it('should reject invalid CSS', () => {
+				var result = sracle.checkCSS("bla ?! 123"); 
+				assert.equal(result.messages.length > 0, true);
+				assert.equal(result.errorCode > 0, true);
+			});
+			it('should accept valid CSS', () => {
+				var result = sracle.checkCSS("table > tbody > tr > td"); 
+				assert.equal(result.errorCode, 0);
+			});
 		});
 		describe('Running', () => {
 			var deployedContract0 = {};
 			var deployedContract1 = {};
 			var deployedContract2 = {};
 			var deployedContract3 = {};
-			before(async () => {
+			before(async function () {
+				this.timeout(5000);
 				var compiledTest = await sracle.compile('contracts/SracleTest.sol');
 				var testContractData = compiledTest[':SracleTest'];
 				var testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));

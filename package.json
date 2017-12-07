@@ -2,23 +2,23 @@
   "name": "sracle",
   "description": "A simple Ethereum oracle",
   "version": "0.0.1",
-  "repository" :
-  { "type" : "git"
-  , "url" : "https://github.com/comodoro/sracle.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/comodoro/sracle.git"
   },
   "bin": {
     "sracle": "./oracle.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
-    "log4js": "^2.3.12",
-    "path": "^0.12.7",
+    "csslint": "^1.0.5",
+     "path": "^0.12.7",
     "request": "^2.83.0",
     "solc": "^0.4.18",
-    "web3": "^1.0.0-beta.26"
+    "web3": "^1.0.0-beta.26",
+    "log4js": "^2.3.12"
   },
   "devDependencies": {
-    "log4js": "^2.3.12",
     "assert": "^1.4.1",
     "mocha": "^4.0.1"
   },
