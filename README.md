@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/comodoro/sracle.svg?branch=master)](https://travis-ci.org/comodoro/sracle)
+﻿[![Build Status](https://travis-ci.org/comodoro/sracle.svg?branch=master)](https://travis-ci.org/comodoro/sracle)
 
 # Sracle - Simple Oracle
 
@@ -16,7 +16,7 @@ Testing:
 1. Start private Ethereum network. `testrpc` does not suffice since it currently
 does not support websockets. Setting up `parity` development chain is however quite simple: 
 
-- Download recent `Parity` and run and exit it once to create the developer account. This account
+- Download recent `Parity` and run and exit it once in dev mode to create the developer account. This account
 is used in the tests. This step has to be done only once.
 - Run `/path/to/parity --config dev --gasprice 0 --unlock 0x00a329c0648769a73afac7f9381e08fb43dbea72 --password test/pwd` (in the root directory or change the path to the `test/pwd` file).
 - Run tests with `npm test`

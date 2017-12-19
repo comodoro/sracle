@@ -7,9 +7,9 @@ contract SracleOracle {
     function cssQuery(string param) 
         external payable 
     {
-        SracleQuery(param);
+        SracleQuery(param, msg.sender);
     }
 
-    event SracleQuery(string param);
+    event SracleQuery(string param, address origin);
 
 }
