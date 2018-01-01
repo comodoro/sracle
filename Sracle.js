@@ -13,9 +13,87 @@ function Sracle(web3, customOptions) {
 		web3 = new Web3('ws://localhost:8546');
 	}
 	this.web3 = web3;
-	this.interfaceAbi = [{"constant":false,"inputs":[{"name":"answer","type":"string"},{"name":"flags","type":"uint256"}],"name":"sracleAnswer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}];
+	this.queryListener = null;
+	//TODO async init method, recompile contracts
+	this.interfaceAbi = [
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "answer",
+					"type": "string"
+				},
+				{
+					"name": "flags",
+					"type": "uint256"
+				}
+			],
+			"name": "sracleAnswer",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	];
 	this.UsingSracleContract = new this.web3.eth.Contract(this.interfaceAbi, '0x00a329c0648769a73afac7f9381e08fb43dbea72');
-	this.fullOracleAbi = [{"constant":false,"inputs":[{"name":"param","type":"string"}],"name":"cssQuery","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"param","type":"string"}],"name":"SracleQuery","type":"event"}];
+	this.fullOracleAbi = [
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "callbackAddress",
+			"outputs": [
+				{
+					"name": "",
+					"type": "address"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "param",
+					"type": "string"
+				}
+			],
+			"name": "cssQuery",
+			"outputs": [],
+			"payable": true,
+			"stateMutability": "payable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"name": "_callbackAddress",
+					"type": "address"
+				}
+			],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "constructor"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": false,
+					"name": "param",
+					"type": "string"
+				},
+				{
+					"indexed": false,
+					"name": "origin",
+					"type": "address"
+				}
+			],
+			"name": "SracleQuery",
+			"type": "event"
+		}
+	];
     //always read default options
 	var options = this.getDefaultOptions();
 	this._checkOptions(options);
@@ -33,8 +111,8 @@ function Sracle(web3, customOptions) {
 }
 
 Sracle.prototype._checkOptions = function (options) {
-	if (!options.existingAddress) {
-		options.existingAddress = undefined;
+	if (!options.existingDeployment) {
+		options.existingDeployment = {};
 	}
 	if (!options.logging) {
 		throw new Error('Logging options not found');
@@ -73,17 +151,19 @@ Sracle.prototype.deploy = async function() {
 	if (accounts.length < 1) {
 		throw new Error("No accounts found");
 	}
-	var result = await self.compile('./contracts/SracleOracle.sol');
-	var compiledSracle = result[':SracleOracle'];
-	var contract = new this.web3.eth.Contract(JSON.parse(compiledSracle.interface));
 	var deployOptions = self.options.deployment;
-	if (!deployOptions.from) {
-		self.options.deployment.from = accounts[0];
+	if (!deployOptions.newDeployment.from) {
+		self.options.deployment.newDeployment.from = accounts[0];
 	}
+	
+	var sracleCompileResult = await self.compile('./contracts/SracleOracle.sol');
+	var compiledSracle =  sracleCompileResult[':SracleOracle'];
+	var contract = new this.web3.eth.Contract(JSON.parse(compiledSracle.interface));
 	self.SracleContract = await contract.deploy({
-		data: '0x' + compiledSracle.bytecode
+		data: '0x' + compiledSracle.bytecode,
+		arguments: [self.options.deployment.newDeployment.from]
 	})
-	.send(deployOptions)
+	.send(deployOptions.newDeployment)
 	.on('error', function(error) {
 		throw error;
 	})
@@ -96,8 +176,57 @@ Sracle.prototype.deploy = async function() {
 	.on('confirmation', function(confirmationNumber, receipt){ 
 		self.logger.debug(confirmationNumber);
 	});
-	self.logger.info("Deployed at " + self.SracleContract.address) 
-	return self.SracleContract;
+	self.logger.info("Deployed at " + self.SracleContract.address);
+	//TODO current web3 1.0 beta hack
+	self.SracleContract.setProvider(self.web3.eth.currentProvider);
+	self.options.deployment.existingDeployment.address = self.SracleContract.options.address;
+	var resolverContract;
+	//compile all the time or store the ABI
+	var resolverCompileResult = await self.compile('./contracts/SracleResolver.sol');
+	var compiledResolver =  resolverCompileResult[':SracleResolver'];
+	if (!self.options.deployment.existingDeployment.resolver) {
+		resolverContract = new this.web3.eth.Contract(JSON.parse(compiledResolver.interface));
+		var sracleResolver = await resolverContract.deploy({
+			data: '0x' + compiledResolver.bytecode,
+			arguments: [self.options.deployment.newDeployment.from]
+		})
+		.send(deployOptions.newDeployment)
+		.on('error', function(error) {
+			throw error;
+		})
+		.on('transactionHash', function(transactionHash){
+			self.logger.debug("Txhash: " + transactionHash);
+		})
+		.on('receipt', function(receipt){
+			self.logger.info(receipt.contractAddress) // contains the new contract address
+		})
+		.on('confirmation', function(confirmationNumber, receipt){ 
+			self.logger.debug(confirmationNumber);
+		});
+		self.options.deployment.existingDeployment.resolver = sracleResolver.options.address;
+	}
+	
+	self.options.deployment.existingDeployment.version = self.options.deployment.existingDeployment.version || 0 + 1;
+	var resolver = new this.web3.eth.Contract(
+		JSON.parse(compiledResolver.interface),
+		self.options.deployment.existingDeployment.resolver
+	);
+	//resolver.setProvíder(this.web3.currentProvider);
+	await resolver.methods.addVersion(
+		self.options.deployment.existingDeployment.version, 
+		self.SracleContract.options.address
+	)
+	.send(self.options.deployment.newDeployment
+	)
+	.on('error', function(error) {
+		throw error;
+	})
+	.on('transactionHash', function(transactionHash){
+		self.logger.debug("Txhash: " + transactionHash);
+	})
+	.on('confirmation', function(confirmationNumber, receipt){ 
+		self.logger.debug(confirmationNumber);
+	});
 }	
 
 Sracle.prototype.getClient = function() {
@@ -118,15 +247,15 @@ Sracle.prototype.getClient = function() {
 	});
 }
 
-Sracle.prototype.calculateGasPrice = function() {
+Sracle.prototype.calculateGasPrice = function(pricingType) {
 	var self = this;
 	return new Promise(function(resolve, reject) {
-		if (self.options.pricing.type == 'ethgasstation') {
+		if (self.options.pricing[pricingType].type == 'ethgasstation') {
 			self.getGasPriceFromEthgasstation().then(gasPrice => {
 				resolve(self.web3.utils.toWei(gasPrice, "gwei"));
 			});
-		} else if (self.options.pricing.type == 'fixed') {
-			resolve(self.options.pricing.value);
+		} else if (self.options.pricing[pricingType].type == 'fixed') {
+			resolve(self.options.pricing[pricingType].value);
 		}
 	});
 }
@@ -144,12 +273,12 @@ Sracle.prototype.getGasPriceFromEthgasstation = function() {
 			}
 			//TODO This is too fragile
 			var css = '';
-			if ((!self.options.pricing.options) || (self.options.pricing.options == 'standard')) {
+			if ((!self.options.pricing.query) || (self.options.pricing.query.options == 'standard')) {
 				css = 'div.right_col > div.row.tile_count > div.col-md-2.col-sm-4.col-xs-6.tile_stats_count:nth-child(2) > div.count';
-			} else if (self.options.pricing.options == 'low') {
+			} else if (self.options.pricing.query.options == 'low') {
 				css = 'div.right_col > div.row.tile_count > div.col-md-2.col-sm-4.col-xs-6.tile_stats_count:nth-child(4) > div.count';
 			} else {
-				reject(new Error('Bad pricing option: ' + self.options.pricing.options));
+				reject(new Error('Bad pricing option: ' + self.options.pricing));
 			}
 			var $ = cheerio.load(body);
 			var text = "";
@@ -166,6 +295,7 @@ Sracle.prototype.getGasPriceFromEthgasstation = function() {
 	});
 }
 
+//deprecated
 Sracle.prototype.getOrigin = function(client, transactionHash) {
 	var self = this;
 	if (client === 'parity') {
@@ -184,7 +314,7 @@ Sracle.prototype.getOrigin = function(client, transactionHash) {
 				resolve(result.result.trace[result.result.trace.length - 1].action.from);
 			});	
 		});
-	} else if (client === 'geth')  {
+	} /*else if (client === 'geth')  {
 		self.web3.currentProvider.send({
 			method: "debug_traceTransaction",
 			params: [transactionHash, {}],
@@ -193,15 +323,27 @@ Sracle.prototype.getOrigin = function(client, transactionHash) {
 		}, function (err, result) {
 			console.log(result);
 		});
-	} else {
+	} */ else {
 		throw new Error('Unsupported client: ' + client);
 	}
 }
 
-Sracle.prototype.setUp = async function() {
+Sracle.prototype.stopListening = async function() {
+	if (this.queryListener) {
+		this.queryListener.removeAllListeners();
+		this.queryListener = null;
+	}
+}
+
+Sracle.prototype.startListening = async function() {
 	var self = this;
-	//TODO online compile from contracts/UsingSracle.sol
-	this.SracleContract.events.SracleQuery({
+	if (!this.options.deployment.newDeployment.from) {
+		var accounts = await this.web3.eth.getAccounts();
+		this.web3.eth.defaultAccount = accounts[0];
+		this.options.deployment.newDeployment.from = accounts[0];
+	}
+	if (this.queryListener) return;
+	this.queryListener = this.SracleContract.events.SracleQuery({
 		fromBlock: await self.web3.eth.getBlockNumber()
 	}, function(error, event) {
 		if (!error) {
@@ -209,6 +351,13 @@ Sracle.prototype.setUp = async function() {
 		} else {
 			self.logger.error(error);
 		}
+	})
+	.on('data', function(event){
+		self.logger.debug(`Received event ${event}`); // same results as the optional callback above
+	})
+	.on('changed', function(event){
+		self.logger.debug('Contract events removed from blockchain');
+		self.stopListening();
 	});
 }
 
@@ -261,7 +410,8 @@ Sracle.prototype.performQuery = async function (event) {
 	var origin = event.returnValues.origin;
 	this.logger.debug("Received param " + param);
 	var transaction = await this.web3.eth.getTransaction(event.transactionHash);
-	var requiredGas = await this.calculateGasPrice() * await this.UsingSracleContract.methods.sracleAnswer('', 0).estimateGas();
+	var pricingType = 'query';
+	var requiredGas = await this.calculateGasPrice(pricingType) * await this.UsingSracleContract.methods.sracleAnswer('', 0).estimateGas();
 	if (transaction.value < requiredGas) {
 		this.logger.warn('No action because transaction value received (' + transaction.value + ') is below the required value (' + requiredGas + ')');
 		return;
@@ -275,17 +425,17 @@ Sracle.prototype.performQuery = async function (event) {
 	var url = param.substring(0, cssPos);
 	this.logger.debug("URL: " + url);
 	var css = param.substring(cssPos+3, param.length);
-	var flags = 0;
+	var flags = this.checkCSS(css).errorCode;
 	var text = "";
 	try {
 		text = await this.cssQuery(url, css);
 	} catch(e) {
-		flags = 1;
+		flags = 1000 | flags;
 	}
-	var client = await this.getClient();
+	//var client = await this.getClient();
 	//var origin = await this.getOrigin(client, transaction.hash);
 	var UsingSracleContract = new this.web3.eth.Contract(this.interfaceAbi, origin);
-	UsingSracleContract.methods.sracleAnswer(text, flags).send(this.options.deployment);
+	UsingSracleContract.methods.sracleAnswer(text, flags).send(this.options.deployment.newDeployment);
 	this.logger.debug(UsingSracleContract);
 }
 

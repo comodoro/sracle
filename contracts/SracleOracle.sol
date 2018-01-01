@@ -1,8 +1,14 @@
 //The actual oracle smart contract
 //To be instantiated on the blockchain
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.19;
 
 contract SracleOracle {
+
+    address public callbackAddress;
+
+    function SracleOracle(address _callbackAddress) public {
+        callbackAddress = _callbackAddress;
+    }
 
     function cssQuery(string param) 
         external payable 

@@ -10,33 +10,41 @@
             }
         }
     },
-    "existingAddress" : null,
     "deployment": {
-        "from": null,
-		"gas": 1500000,
-		"gasPrice": 20000000
+        "newDeployment": {
+            "from": null,
+            "gas": 1500000,
+            "gasPrice": 20000000
+        },
+       "existingDeployment" : {
+            "resolver": null,
+            "version": null,
+            "address": null
+        }
     },
     "css": {
         "limit": 1024
     },
     "pricing": {
-        "type": "ethgasstation",
-        "options": "standard",
-        "value": "1.5"
-    },
-    "_alternative_pricing": {
-        "type": "fixed",
-        "options": "standard",
-        "value": "11000000000"
-    },
-    "answerGas": {
-        "type": "ethgasstation",
-        "options": "standard",
-        "value": "1.0"
-    },
-    "_alte4rnative_answerGas": {
-        "type": "fixed",
-        "options": "standard",
-        "value": "10000000000"
+        "query": {
+            "type": "ethgasstation",
+            "options": "standard",
+            "value": "1.5"
+        },
+        "_alternative_query": {
+            "type": "fixed",
+            "options": "standard",
+            "value": "11000000000"
+        },
+        "answer": {
+            "type": "ethgasstation",
+            "options": "standard",
+            "value": "1.0"
+        },
+        "_alternative_answer": {
+            "type": "fixed",
+            "options": "standard",
+            "value": "10000000000"
+        }
     }
 }

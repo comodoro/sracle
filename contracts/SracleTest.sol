@@ -1,6 +1,6 @@
 //Test contract
 //A very simple test
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.19;
 
 contract UsingSracle {
 
@@ -16,17 +16,38 @@ contract Sracle {
 
 contract SracleTest is UsingSracle {
 
+	address sracleAddress;
+	address sracleCallbackAddress;
+
+	function SracleTest(address _sracleAddress, address _sracleCallbackAddress) public {
+		sracleAddress = _sracleAddress;
+		sracleCallbackAddress = _sracleCallbackAddress;
+	}
+
+	modifier onlySracle() {
+		require(msg.sender == sracleCallbackAddress);
+		_;
+	}
+
 	string answer;
 
-	function test(address sracleAddress) external payable {
+	function testValidCSS() external payable {
 		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///title"); 
 	}
 
-	function testInvalidCSS(address sracleAddress) external payable {
+	function testInvalidCSS() external payable {
 		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
 	}
 
-	function sracleAnswer(string _answer, uint _flags) external {
+	function testInvalidProtocolCSS() external payable {
+		Sracle(sracleAddress).cssQuery.value(msg.value)("bitcoin://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
+	}
+
+	function testInvalidSeparatorCSS() external payable {
+		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii//mandra _ gora ."); 
+	}
+
+	function sracleAnswer(string _answer, uint _flags) external onlySracle {
 		answer = _answer;
 		if (_flags != 0) {
 			ErrorEvent(answer);

@@ -41,12 +41,8 @@ describe('All', function () {
 		describe('Deployment', () => {
 			it('should deploy', async () => {
 				await sracle.deploy();
-				assert.equal(sracle.SracleContract._address.length, 42);
+				assert.equal(sracle.SracleContract.options.address.length, 42);
 			}).timeout(30000);
-			it('should set up', async () => {
-				await sracle.deploy();
-				await sracle.setUp();
-			}).timeout(31000);	
 			it('should load default options', async () => {
 				var options = await sracle.getDefaultOptions();
 				assert.notEqual(options.logging, undefined);
@@ -86,71 +82,19 @@ describe('All', function () {
 			});
 		});
 		describe('Running', () => {
-			var deployedContract0 = {};
-			var deployedContract1 = {};
-			var deployedContract2 = {};
-			var deployedContract3 = {};
-			var accounts = {};
-			before(async function () {
-				this.timeout(5000);
-			    accounts = await web3.eth.getAccounts();
-				var compiledTest = await sracle.compile('contracts/SracleTest.sol');
-				var testContractData = compiledTest[':SracleTest'];
-				var testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
-				deployedContract0 = await testContract.deploy({
-					data: '0x' + testContractData.bytecode
-				})
-				.send({
-					from: accounts[0],//"0x00a329c0648769a73afac7f9381e08fb43dbea72",
-					gas: 1500000,
-					gasPrice: '20000000'
-				})
-				.on('error', function(error) {
-					throw error;
-				});
-				deployedContract1 = await testContract.deploy({
-					data: '0x' + testContractData.bytecode
-				})
-				.send({
-					from: accounts[0],
-					gas: 1500000,
-					gasPrice: '20000000'
-				})
-				.on('error', function(error) {
-					throw error;
-				});				
-				deployedContract2 = await testContract.deploy({
-					data: '0x' + testContractData.bytecode
-				})
-				.send({
-					from: accounts[0],
-					gas: 1500000,
-					gasPrice: '20000000'
-				})
-				.on('error', function(error) {
-					throw error;
-				});
-				deployedContract3 = await testContract.deploy({
-					data: '0x' + testContractData.bytecode
-				})
-				.send({
-					from: accounts[0],
-					gas: 1500000,
-					gasPrice: '20000000'
-				})
-				.on('error', function(error) {
-					throw error;
-				});			
-			});
+			it('should start listening', async () => {
+				await sracle.startListening();
+				assert.equal(sracle.queryListener.subscriptionMethod, 'logs');
+			}).timeout(31000);	
 			it('should retrieve gas from EthGasStation', async () => {
-				sracle.options.pricing =  {
+				sracle.options.pricing.query =  {
 					"type": "ethgasstation",
 					"options": "low",
 					"value": "1.5"			
 				};
 				var low = await sracle.getGasPriceFromEthgasstation();
 				assert.equal(low.length > 0, true);
-				sracle.options.pricing =  {
+				sracle.options.pricing.query =  {
 					"type": "ethgasstation",
 					"options": "standard",
 					"value": "1.5"			
@@ -160,27 +104,79 @@ describe('All', function () {
 				//a bit suspicious that these can actually be equal
 				assert.equal(Number(standard) >= Number(low), true);
 			});
-			// it('should detect calling contract address', (done) => {
-			// 		deployedContract0.methods.test(sracle.SracleContract.options.address).send({
-			// 		from: accounts[0],
-			// 		gas: 1500000,
-			// 		gasPrice: '20000000',
-			// 		value: '1000000000000000000'
-			// 	}).then(function(receipt){
-			// 		sracle.getClient().then((client) => {
-			// 			sracle.getOrigin(client, receipt.transactionHash).then((origin) => {
-			// 				assert.equal(origin.toLowerCase(), deployedContract0.options.address.toLowerCase());
-			// 			}).then(done);
-			// 		});
-			// 	});
-			// }).timeout(10000);
+		});
+		describe('Contract interaction', () => {
+			var deployedContract0 = {};
+			var deployedContract1 = {};
+			var deployedContract2 = {};
+			var deployedContract3 = {};
+			var accounts = {};
+			before(async function () {
+				this.timeout(10000);
+			    accounts = await web3.eth.getAccounts();
+				var compiledTest = await sracle.compile('contracts/SracleTest.sol');
+				var testContractData = compiledTest[':SracleTest'];
+				var testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
+				deployedContract0 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode,
+					arguments: [sracle.options.deployment.existingDeployment.address, accounts[0]]
+				})
+				.send({
+					from: accounts[0],
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});
+				deployedContract0.setProvider(testContract.currentProvider);
+				deployedContract1 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode,
+					arguments: [sracle.options.deployment.existingDeployment.address, accounts[0]]
+				})
+				.send({
+					from: accounts[0],
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});	
+				deployedContract1.setProvider(testContract.currentProvider);			
+				deployedContract2 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode,
+					arguments: [sracle.options.deployment.existingDeployment.address, accounts[0]]
+				})
+				.send({
+					from: accounts[0],
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});
+				deployedContract2.setProvider(testContract.currentProvider);
+				deployedContract3 = await testContract.deploy({
+					data: '0x' + testContractData.bytecode,
+					arguments: [sracle.options.deployment.existingDeployment.address, accounts[0]]
+				})
+				.send({
+					from: accounts[0],
+					gas: 1500000,
+					gasPrice: '20000000'
+				})
+				.on('error', function(error) {
+					throw error;
+				});		
+				deployedContract3.setProvider(testContract.currentProvider);	
+			});
 			it('should answer a transaction', (done) => {
 				deployedContract1.events.TestEvent({
 					fromBlock: 0
 				}, function(error, event) {
 					done(error);
 				});
-				deployedContract1.methods.test(sracle.SracleContract._address).send({
+				deployedContract1.methods.testValidCSS().send({
 					from: accounts[0],
 					gas: 1500000,
 					gasPrice: '20000000',
@@ -198,7 +194,7 @@ describe('All', function () {
 				}, function(error, event) {
 					done(error);
 				});				
-				deployedContract2.methods.testInvalidCSS(sracle.SracleContract._address).send({
+				deployedContract2.methods.testInvalidCSS().send({
 					from: accounts[0],
 					gas: 1500000,
 					gasPrice: '20000000',
@@ -216,8 +212,8 @@ describe('All', function () {
 				}, function(error, event) {
 					done(new Error('ErrorEvent returned on too low transaction value'));
 				});	
-				sracle.options.pricing = sracle.options._alternative_pricing;
-				deployedContract3.methods.test(sracle.SracleContract._address).send({
+				sracle.options.pricing.query = sracle.options.pricing._alternative_query;
+				deployedContract3.methods.testValidCSS().send({
 					from: accounts[0],
 					gas: 1500000,
 					gasPrice: '20000000',
@@ -225,7 +221,7 @@ describe('All', function () {
 					value: '1'
 				});
 				setTimeout(done, 10000);
-			}).timeout(11000);
+			}).timeout(12000);
 		});		
 	});
 });
