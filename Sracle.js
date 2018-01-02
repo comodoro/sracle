@@ -102,12 +102,13 @@ function Sracle(web3, customOptions) {
 	this.SracleContract = new web3.eth.Contract(this.fullOracleAbi, this.options.existingAddress);
 	Log4js.configure(this.options.logging);	
 	this.logger = Log4js.getLogger();
-	// if (!options.deployment.from) {
-	// 	web3.eth.getAccounts().then((accounts) => {
-	// 		//runs async
-	// 		web3.eth.defaultAccount = accounts[0];
-	// 	});
-	// }
+	//at least somehow handle unhandled rejections and exceptions
+	process.on('unhandledRejection', (reason, p) => {
+		throw reason;
+	});
+	process.on('uncaughtException', (error) => {
+		this.logger.error(error);
+	});	
 }
 
 Sracle.prototype._checkOptions = function (options) {
@@ -295,43 +296,9 @@ Sracle.prototype.getGasPriceFromEthgasstation = function() {
 	});
 }
 
-//deprecated
-Sracle.prototype.getOrigin = function(client, transactionHash) {
-	var self = this;
-	if (client === 'parity') {
-		return new Promise(resolve => {
-			self.web3.currentProvider.send({
-				method: "trace_replayTransaction",
-				params: [transactionHash, ['trace']],
-				jsonrpc: "2.0",
-				id: "2"
-			}, function (err, result) {
-				self.logger.trace('Transaction trace: ' + result);
-				if (err) throw err;
-				if ((!result.result.trace) || (result.result.trace.length < 1) || (!result.result.trace[0].action)) {
-					throw new Error('Cannot get last contract from trace');
-				}
-				resolve(result.result.trace[result.result.trace.length - 1].action.from);
-			});	
-		});
-	} /*else if (client === 'geth')  {
-		self.web3.currentProvider.send({
-			method: "debug_traceTransaction",
-			params: [transactionHash, {}],
-			jsonrpc: "2.0",
-			id: "5"
-		}, function (err, result) {
-			console.log(result);
-		});
-	} */ else {
-		throw new Error('Unsupported client: ' + client);
-	}
-}
-
-Sracle.prototype.stopListening = async function() {
+Sracle.prototype.stopListening = function() {
 	if (this.queryListener) {
-		this.queryListener.removeAllListeners();
-		this.queryListener = null;
+		this.queryListener.unsubscribe();
 	}
 }
 
@@ -342,7 +309,13 @@ Sracle.prototype.startListening = async function() {
 		this.web3.eth.defaultAccount = accounts[0];
 		this.options.deployment.newDeployment.from = accounts[0];
 	}
-	if (this.queryListener) return;
+	if (this.queryListener) this.queryListener.subscribe();
+	// this.queryListener = self.web3.eth.subscribe('logs', {
+	// 	address: this.SracleContract.options.address
+	// }, function(error, event){
+	// 	if (!error)
+	// 		console.log(event);
+	// });
 	this.queryListener = this.SracleContract.events.SracleQuery({
 		fromBlock: await self.web3.eth.getBlockNumber()
 	}, function(error, event) {
@@ -359,6 +332,10 @@ Sracle.prototype.startListening = async function() {
 		self.logger.debug('Contract events removed from blockchain');
 		self.stopListening();
 	});
+}
+
+Sracle.prototype.isListening = function () {
+	return Boolean(this.queryListener._events.data);
 }
 
 Sracle.prototype.checkCSS = function(css) {
@@ -406,6 +383,7 @@ Sracle.prototype.cssQuery = function (url, css) {
 
 Sracle.prototype.performQuery = async function (event) {
 	this.logger.trace("Sracle.performQuery");
+	if (!this.isListening()) return;
 	var param = event.returnValues.param;
 	var origin = event.returnValues.origin;
 	this.logger.debug("Received param " + param);
