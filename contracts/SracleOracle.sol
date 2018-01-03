@@ -10,12 +10,12 @@ contract SracleOracle {
         callbackAddress = _callbackAddress;
     }
 
-    function cssQuery(string param) 
+    function query(string queryCode, string param) 
         external payable 
     {
-        SracleQuery(param, msg.sender);
+        SracleQuery(queryCode, param, msg.sender);
     }
 
-    event SracleQuery(string param, address origin);
+    event SracleQuery(string queryCode, string param, address origin);
 
 }

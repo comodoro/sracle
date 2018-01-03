@@ -105,9 +105,6 @@ describe('Running', () => {
 });
 describe('Contract interaction', () => {
 	var deployedContract = {};
-	var deployedContract1 = {};
-	var deployedContract2 = {};
-	var deployedContract3 = {};
 	var accounts = {};
 	var testContractData;
 	var testContract;
@@ -118,13 +115,10 @@ before(async function () {
 		var compiledTest = await sracle.compile('contracts/SracleTest.sol');
 		testContractData = compiledTest[':SracleTest'];
 		testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
-		//deployedContract0 = await deployTestContract(testContract, testContractData, accounts[0]);			
-		deployedContract1 = await deployTestContract(testContract, testContractData, accounts[0]);			
-		deployedContract2 = await deployTestContract(testContract, testContractData, accounts[0]);			
-		deployedContract3 = await deployTestContract(testContract, testContractData, accounts[0]);	
 	});
 	beforeEach(async function() {
-		deployedContract = await deployTestContract(testContract, testContractData, accounts[0]);			
+		//TODO concurrency, maybe there is easier solution
+	deployedContract = await deployTestContract(testContract, testContractData, accounts[0]);			
 	});
 	it('should answer a valid query', (done) => {
 		deployedContract.events.TestEvent({
@@ -157,54 +151,43 @@ before(async function () {
 			value: '1000000000000000000'
 		});
 	}).timeout(30000);
-	//TODO concurrency, separate describe?
-	// it('should corrwctly react to startListening and stopListening', (done) => {
-	// 	var listening;
-	// 	deployedContract0.events.TestEvent({
-	// 		fromBlock: 0
-	// 	}, function(error, event) {
-	// 		var err = error || sracle.isListening() ? null : new Error('Callback received when not listening');
-	// 		if (err) throw err;
-	// 		else done();
-	// 	});
-	// 	deployedContract0.events.ErrorEvent({
-	// 		fromBlock: 0
-	// 	}, function(error, event) {
-	// 		done(new Error('Unexpected ErrorEvent'));
-	// 	});	
-	// 	sracle.stopListening().then(() => {
-	// 		deployedContract0.methods.testValidCSS().send({
-	// 			from: accounts[0],
-	// 			gas: 1500000,
-	// 			gasPrice: '20000000',
-	// 			value: '1000000000000000000'
-	// 		});
-	// 	});
-	// 	setTimeout(async () => {
-	// 		sracle.startListening().then(() => {
-	// 			deployedContract0.methods.testValidCSS().send({
-	// 				from: accounts[0],
-	// 				gas: 1500000,
-	// 				gasPrice: '20000000',
-	// 				value: '1000000000000000000'
-	// 			});
-	// 		});
-
-	// 	}, 10000);
-	// });
+	it('should corrwctly react to startListening and stopListening', (done) => {
+		var listening;
+		deployedContract.events.TestEvent({
+			fromBlock: 0
+		}, function(error, event) {
+			//error if not listening
+			var err = error || sracle.isListening() ? null : new Error('Callback received when not listening');
+			done(err);
+		});
+		deployedContract.events.ErrorEvent({
+			fromBlock: 0
+		}, function(error, event) {
+			done(new Error('Unexpected ErrorEvent'));
+		});	
+		sracle.stopListening();
+		deployedContract.methods.testValidCSS().send({
+			from: accounts[0],
+			gas: 1500000,
+			gasPrice: '20000000',
+			value: '1000000000000000000'
+		});
+		//TODO this is expected behavior but somewhat unclear
+		setTimeout(async () => sracle.startListening(), 6000);
+	}).timeout(8000);
 	it('should not return anything (time out) on too low a transaction value', (done) => {
-		deployedContract3.events.TestEvent({
+		deployedContract.events.TestEvent({
 			fromBlock: 0
 		}, function(error, event) {
 			done(new Error('TestEvent returned on too low transaction value'));
 		});
-		deployedContract3.events.ErrorEvent({
+		deployedContract.events.ErrorEvent({
 			fromBlock: 0
 		}, function(error, event) {
 			done(new Error('ErrorEvent returned on too low transaction value'));
 		});	
 		sracle.options.pricing.query = sracle.options.pricing._alternative_query;
-		deployedContract3.methods.testValidCSS().send({
+		deployedContract.methods.testValidCSS().send({
 			from: accounts[0],
 			gas: 1500000,
 			gasPrice: '20000000',

@@ -10,7 +10,7 @@ contract UsingSracle {
 
 contract Sracle {
 
-    function cssQuery(string param) external payable;
+    function query(string queryCode, string param) external payable;
 
 }
 
@@ -32,19 +32,19 @@ contract SracleTest is UsingSracle {
 	string answer;
 
 	function testValidCSS() external payable {
-		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///title"); 
+		Sracle(sracleAddress).query.value(msg.value)("css", "https://en.wikipedia.org/wiki/Boii///title"); 
 	}
 
 	function testInvalidCSS() external payable {
-		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
+		Sracle(sracleAddress).query.value(msg.value)("css", "https://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
 	}
 
 	function testInvalidProtocolCSS() external payable {
-		Sracle(sracleAddress).cssQuery.value(msg.value)("bitcoin://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
+		Sracle(sracleAddress).query.value(msg.value)("css", "bitcoin://en.wikipedia.org/wiki/Boii///mandra _ gora ."); 
 	}
 
 	function testInvalidSeparatorCSS() external payable {
-		Sracle(sracleAddress).cssQuery.value(msg.value)("https://en.wikipedia.org/wiki/Boii//mandra _ gora ."); 
+		Sracle(sracleAddress).query.value(msg.value)("css", "https://en.wikipedia.org/wiki/Boii//mandra _ gora ."); 
 	}
 
 	function sracleAnswer(string _answer, uint _flags) external onlySracle {
