@@ -26,25 +26,39 @@
         "limit": 1024
     },
     "pricing": {
-        "query": {
+        "_alternative_query": {
             "type": "ethgasstation",
             "options": "standard",
             "value": "1.5"
         },
-        "_alternative_query": {
+        "query": {
             "type": "fixed",
             "options": "standard",
             "value": "11000000000"
         },
-        "answer": {
+        "_alternative_answer": {
             "type": "ethgasstation",
             "options": "standard",
             "value": "1.0"
         },
-        "_alternative_answer": {
+        "answer": {
             "type": "fixed",
             "options": "standard",
             "value": "10000000000"
+        }
+    },
+    "modules": {
+        "css": {
+            "filename":"css.js",
+            "active":true
+        },
+        "rnd":{
+            "filename": "random.js",
+            "active":true
+        },
+        "tim": {
+            "filename":"time.js",
+            "active":true
         }
     }
 }

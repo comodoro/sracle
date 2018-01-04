@@ -5,123 +5,142 @@ var cheerio = require('cheerio');
 var Log4js = require('log4js');
 var fs = require('fs');
 //May not be the best tool for the job
-var cssLint = require('csslint')
 
 class Sracle {
 
 	constructor(web3, customOptions) {
-	if (web3 === undefined) {
-		var Web3 = require('web3');
-		web3 = new Web3('ws://localhost:8546');
+		if (web3 === undefined) {
+			var Web3 = require('web3');
+			web3 = new Web3('ws://localhost:8546');
+		}
+		this.web3 = web3;
+		this.queryListener = null;
+		//TODO async init method, recompile contracts
+		this.interfaceAbi = [
+			{
+				"constant": false,
+				"inputs": [
+					{
+						"name": "answer",
+						"type": "string"
+					},
+					{
+						"name": "flags",
+						"type": "uint256"
+					}
+				],
+				"name": "sracleAnswer",
+				"outputs": [],
+				"payable": false,
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		];
+		this.UsingSracleContract = new this.web3.eth.Contract(this.interfaceAbi, '0x00a329c0648769a73afac7f9381e08fb43dbea72');
+		this.fullOracleAbi = [
+			{
+				"constant": true,
+				"inputs": [],
+				"name": "callbackAddress",
+				"outputs": [
+					{
+						"name": "",
+						"type": "address"
+					}
+				],
+				"payable": false,
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"constant": false,
+				"inputs": [
+					{
+						"name": "param",
+						"type": "string"
+					}
+				],
+				"name": "cssQuery",
+				"outputs": [],
+				"payable": true,
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"name": "_callbackAddress",
+						"type": "address"
+					}
+				],
+				"payable": false,
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"name": "param",
+						"type": "string"
+					},
+					{
+						"indexed": false,
+						"name": "origin",
+						"type": "address"
+					}
+				],
+				"name": "SracleQuery",
+				"type": "event"
+			}
+		];
+		//always read default options
+		var options = this.getDefaultOptions();
+		this._checkOptions(options);
+		this.options = options;
+		Object.assign(this.options, customOptions);
+		this.SracleContract = new web3.eth.Contract(this.fullOracleAbi, this.options.existingAddress);
+		Log4js.configure(this.options.logging);	
+		this.logger = Log4js.getLogger();
+		//at least somehow handle unhandled rejections and exceptions
+		process.on('unhandledRejection', (reason, p) => {
+			throw reason;
+		});
+		process.on('uncaughtException', (error) => {
+			this.logger.error(error);
+		});	
+		this._initModules();
 	}
-	this.web3 = web3;
-	this.queryListener = null;
-	//TODO async init method, recompile contracts
-	this.interfaceAbi = [
-		{
-			"constant": false,
-			"inputs": [
-				{
-					"name": "answer",
-					"type": "string"
-				},
-				{
-					"name": "flags",
-					"type": "uint256"
-				}
-			],
-			"name": "sracleAnswer",
-			"outputs": [],
-			"payable": false,
-			"stateMutability": "nonpayable",
-			"type": "function"
+
+	_initModules() {
+		for (module in this.options.modules) {
+			module =  this.options.modules[module];
+			if (module.active) {
+				try {
+					module.value = new (require('./' + module.filename));
+				} catch (err) {
+					module.active = false;
+					this.logger.error(err);
+				}	
+			}
 		}
-	];
-	this.UsingSracleContract = new this.web3.eth.Contract(this.interfaceAbi, '0x00a329c0648769a73afac7f9381e08fb43dbea72');
-	this.fullOracleAbi = [
-		{
-			"constant": true,
-			"inputs": [],
-			"name": "callbackAddress",
-			"outputs": [
-				{
-					"name": "",
-					"type": "address"
-				}
-			],
-			"payable": false,
-			"stateMutability": "view",
-			"type": "function"
-		},
-		{
-			"constant": false,
-			"inputs": [
-				{
-					"name": "param",
-					"type": "string"
-				}
-			],
-			"name": "cssQuery",
-			"outputs": [],
-			"payable": true,
-			"stateMutability": "payable",
-			"type": "function"
-		},
-		{
-			"inputs": [
-				{
-					"name": "_callbackAddress",
-					"type": "address"
-				}
-			],
-			"payable": false,
-			"stateMutability": "nonpayable",
-			"type": "constructor"
-		},
-		{
-			"anonymous": false,
-			"inputs": [
-				{
-					"indexed": false,
-					"name": "param",
-					"type": "string"
-				},
-				{
-					"indexed": false,
-					"name": "origin",
-					"type": "address"
-				}
-			],
-			"name": "SracleQuery",
-			"type": "event"
-		}
-	];
-    //always read default options
-	var options = this.getDefaultOptions();
-	this._checkOptions(options);
-	this.options = options;
-	Object.assign(this.options, customOptions);
-	this.SracleContract = new web3.eth.Contract(this.fullOracleAbi, this.options.existingAddress);
-	Log4js.configure(this.options.logging);	
-	this.logger = Log4js.getLogger();
-	//at least somehow handle unhandled rejections and exceptions
-	process.on('unhandledRejection', (reason, p) => {
-		throw reason;
-	});
-	process.on('uncaughtException', (error) => {
-		this.logger.error(error);
-	});	
-}
+	}
+
     _checkOptions (options) {
-		if (!options.existingDeployment) {
-			options.existingDeployment = {};
+		if (!options.deployment.existingDeployment) {
+			options.deployment.existingDeployment = {};
+		}
+		if (!options.deployment.newDeployment) {
+			throw new Error('New deployment options not found');
 		}
 		if (!options.logging) {
 			throw new Error('Logging options not found');
 		} 
-		if (!options.css) {
-			throw new Error('CSS options not found');
-		} 
+		if (!options.modules) {
+			throw new Error('Modules options not found');
+		}
+		
 	}
 
 	getDefaultOptions () {
@@ -333,53 +352,20 @@ class Sracle {
 		return Boolean(this.queryListener._events.data);
 	}
 
-	checkCSS (css) {
-		var result = cssLint.CSSLint.verify(css + '{}');
-		var errorCode = 0;
-		for (let i = 0;i < result.messages.length;i++) {
-			if (result.messages[i].type == 'error') {
-				errorCode += 1;
-			}
-		};
-		return {
-			'errorCode' : errorCode,
-			'messages': result.messages
-		};
-	}
-
-	cssQuery (url, css) {
-		var self = this;
-		this.logger.debug("CSS: " + css);
-		return new Promise(function(resolve, reject) {
-			request(url, function (error, response, body) {
-				if (error) {
-					self.logger.error(error);
-				}
-				//TODO support probably most redirects
-				if ((response.statusCode < 200) || (response.statusCode >= 300)) {
-					reject('HTTP status code of response is not 200');
-				}
-				var $ = cheerio.load(body);
-				//TODO input checking
-				var text = "";
-				try {
-					text = $(css).text();
-				} catch(e) {
-					reject(e);
-				}
-				if (text.length > self.options.css.limit) {
-					text = text.substring(0, 1024);
-				}
-				self.logger.info('CSS found: >' + text + '<');
-				resolve(text);
-			});
-		});
-	}
 
 	async processQuery (event) {
 		this.logger.trace("Sracle.performQuery");
 		if (!this.isListening()) return;
 		var queryCode = event.returnValues.queryCode;
+		if (this.options.modules[queryCode]) {
+			if (!this.options.modules[queryCode].active) {
+				logger.error(`Query to inactive module ${queryCode} received`);
+				return;
+			}
+		} else {
+			logger.error(`Query to nonexisting module ${queryCode} received`);
+			return;
+		}
 		var param = event.returnValues.param;
 		var origin = event.returnValues.origin;
 		this.logger.debug("Received param " + param);
@@ -387,30 +373,16 @@ class Sracle {
 		var pricingType = 'query';
 		var requiredGas = await this.calculateGasPrice(pricingType) * await this.UsingSracleContract.methods.sracleAnswer('', 0).estimateGas();
 		if (transaction.value < requiredGas) {
-			this.logger.warn('No action because transaction value received (' + transaction.value + ') is below the required value (' + requiredGas + ')');
+			this.logger.warn(`No action because transaction value received (${transaction.value}) is below the required value (${requiredGas})`);
 			return;
 		}
 		var sender = transaction.from;
 		this.logger.debug("Initial sender: " + sender + ", value: " + transaction.value);
-		var cssPos = param.indexOf("///");
-		if (cssPos < 0) {
-			throw new Error('CSS after /// not found in query');
-		}
-		var url = param.substring(0, cssPos);
-		this.logger.debug("URL: " + url);
-		var css = param.substring(cssPos+3, param.length);
-		var flags = this.checkCSS(css).errorCode;
-		var text = "";
-		try {
-			text = await this.cssQuery(url, css);
-		} catch(e) {
-			flags = 1000 | flags;
-		}
-		//var client = await this.getClient();
-		//var origin = await this.getOrigin(client, transaction.hash);
 		var UsingSracleContract = new this.web3.eth.Contract(this.interfaceAbi, origin);
-		UsingSracleContract.methods.sracleAnswer(text, flags).send(this.options.deployment.newDeployment);
-		this.logger.debug(UsingSracleContract);
+		var wholeAnswer = await this.options.modules[queryCode].value.handleQuery(param);
+		UsingSracleContract.methods.sracleAnswer(wholeAnswer.answer, wholeAnswer.flags).send(this.options.deployment.newDeployment);
+		this.logger.debug(`Sent answer ${wholeAnswer.answer} to ${origin}`);
+
 	}
 }
 module.exports = Sracle;
