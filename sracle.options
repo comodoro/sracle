@@ -22,9 +22,6 @@
             "address": null
         }
     },
-    "css": {
-        "limit": 1024
-    },
     "pricing": {
         "_alternative_query": {
             "type": "ethgasstation",
@@ -50,13 +47,16 @@
     "modules": {
         "css": {
             "filename":"css.js",
-            "active":true
+            "active":true,
+            "options": {
+                "limit": 1024
+            }
         },
         "rnd":{
             "filename": "random.js",
             "active":true
         },
-        "tim": {
+        "time": {
             "filename":"time.js",
             "active":true
         }

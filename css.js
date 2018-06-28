@@ -10,8 +10,12 @@ class css {
     constructor(options) {
 		if (!options) {
 			options = {
-				css: {
-					limit: 1024
+				modules: {
+					css: {
+						options: {
+							limit: 1024
+						}
+					},
 				},
 			    logging : {
 					appenders: {
@@ -27,8 +31,6 @@ class css {
 			}
 		}
         this.options = options;
-        // this.options.logging.categories.css = this.options.logging.categories.default;
-        // this.options.logging.categories.default = undefined;
         Log4js.configure(this.options.logging);	
 		this.logger = Log4js.getLogger();
     }
@@ -68,8 +70,8 @@ class css {
 				} catch(e) {
 					reject(e);
 				}
-				if (text.length > self.options.css.limit) {
-					text = text.substring(0, 1024);
+				if (text.length > self.options.modules.css.options.limit) {
+					text = text.substring(0, self.options.modules.css.options.limit);
 				}
 				self.logger.info('CSS found: >' + text + '<');
 				resolve(text);

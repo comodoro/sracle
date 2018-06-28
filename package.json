@@ -10,14 +10,16 @@
     "sracle": "./oracle.js"
   },
   "dependencies": {
+    "blessed": "^0.1.81",
     "cheerio": "^1.0.0-rc.2",
     "csslint": "^1.0.5",
     "log4js": "^2.4.1",
+    "node-fetch": "^1.7.3",
+    "npm": "^6.1.0",
     "path": "^0.12.7",
     "request": "^2.83.0",
     "solc": "^0.4.19",
-    "web3": "^1.0.0-beta.27",
-    "node-fetch": "^1.7.3"
+    "web3": "^1.0.0-beta.27"
   },
   "devDependencies": {
     "chai": "^4.1.2",

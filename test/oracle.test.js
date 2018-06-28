@@ -66,7 +66,6 @@ describe('Deployment', () => {
 		var options = await sracle.getDefaultOptions();
 		assert.notEqual(options.logging, undefined);
 		assert.notEqual(options.deployment, undefined);
-		assert.notEqual(options.css, undefined);
 		assert.notEqual(options.pricing, undefined);
 		assert.equal(options.nonExistingOption, undefined);
 	});	
@@ -151,7 +150,7 @@ before(async function () {
 			value: '1000000000000000000'
 		});
 	}).timeout(30000);
-	it('should corrwctly react to startListening and stopListening', (done) => {
+	it('should correctly react to startListening and stopListening', (done) => {
 		var listening;
 		deployedContract.events.TestEvent({
 			fromBlock: 0
