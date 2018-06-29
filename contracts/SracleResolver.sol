@@ -9,7 +9,7 @@ contract SracleResolver {
     mapping(uint => address) allOracles;
     uint public lastVersion;
 
-    function  SracleResolver(address _owner) public {
+    constructor(address _owner) public {
         owner = _owner;
     }
 

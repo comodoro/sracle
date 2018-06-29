@@ -329,7 +329,7 @@ class Sracle {
 			this.web3.eth.defaultAccount = accounts[0];
 			this.options.deployment.newDeployment.from = accounts[0];
 		}
-		if (this.queryListener) this.queryListener.subscribe();
+		//if (this.queryListener) this.queryListener.subscribe();
 		this.queryListener = this.SracleContract.events.SracleQuery({
 			fromBlock: await self.web3.eth.getBlockNumber()
 		}, function(error, event) {

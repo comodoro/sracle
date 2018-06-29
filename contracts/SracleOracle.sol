@@ -6,14 +6,14 @@ contract SracleOracle {
 
     address public callbackAddress;
 
-    function SracleOracle(address _callbackAddress) public {
+    constructor(address _callbackAddress) public {
         callbackAddress = _callbackAddress;
     }
 
     function query(string queryCode, string param) 
         external payable 
     {
-        SracleQuery(queryCode, param, msg.sender);
+        emit SracleQuery(queryCode, param, msg.sender);
     }
 
     event SracleQuery(string queryCode, string param, address origin);

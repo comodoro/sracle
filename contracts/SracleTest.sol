@@ -19,7 +19,7 @@ contract SracleTest is UsingSracle {
 	address sracleAddress;
 	address sracleCallbackAddress;
 
-	function SracleTest(address _sracleAddress, address _sracleCallbackAddress) public {
+	constructor(address _sracleAddress, address _sracleCallbackAddress) public {
 		sracleAddress = _sracleAddress;
 		sracleCallbackAddress = _sracleCallbackAddress;
 	}
@@ -50,9 +50,9 @@ contract SracleTest is UsingSracle {
 	function sracleAnswer(string _answer, uint _flags) external onlySracle {
 		answer = _answer;
 		if (_flags != 0) {
-			ErrorEvent(answer);
+			emit ErrorEvent(answer);
 		} else {
-			TestEvent(answer);
+			emit TestEvent(answer);
 		}
 	}
 

@@ -3,7 +3,7 @@
 var assert = require('chai').assert;
 var Log4js = require('log4js');
 var logger = Log4js.getLogger();
-logger.level = Log4js.levels.ALL; 
+logger.level = Log4js.levels.ALL;
 
 deployTestContract = async (testContract, testContractData, from) => {
 	var deployedContract = await testContract.deploy({
@@ -18,7 +18,7 @@ deployTestContract = async (testContract, testContractData, from) => {
 	.on('error', function(error) {
 		throw error;
 	});
-	deployedContract.setProvider(testContract.currentProvider);
+	//deployedContract.setProvider(testContract.currentProvider);
 	return deployedContract;
 }
 
@@ -107,7 +107,7 @@ describe('Contract interaction', () => {
 	var accounts = {};
 	var testContractData;
 	var testContract;
-before(async function () {
+	before(async function () {
 		this.timeout(10000);
 		accounts = await web3.eth.getAccounts();
 		await sracle.startListening();
@@ -116,8 +116,9 @@ before(async function () {
 		testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
 	});
 	beforeEach(async function() {
+		this.timeout(10000);
 		//TODO concurrency, maybe there is easier solution
-	deployedContract = await deployTestContract(testContract, testContractData, accounts[0]);			
+		deployedContract = await deployTestContract(testContract, testContractData, accounts[0]);			
 	});
 	it('should answer a valid query', (done) => {
 		deployedContract.events.TestEvent({
