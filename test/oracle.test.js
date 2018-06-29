@@ -5,6 +5,8 @@ var Log4js = require('log4js');
 var logger = Log4js.getLogger();
 logger.level = Log4js.levels.ALL;
 
+var TIMEOUT = process.env.TIMEOUT || 1;
+
 deployTestContract = async (testContract, testContractData, from) => {
 	var deployedContract = await testContract.deploy({
 		data: '0x' + testContractData.bytecode,
@@ -61,7 +63,7 @@ describe('Deployment', () => {
 	it('should deploy', async () => {
 		await sracle.deploy();
 		assert.equal(sracle.SracleContract.options.address.length, 42);
-	}).timeout(30000);
+	}).timeout(60000*TIMEOUT)
 	it('should load default options', async () => {
 		var options = await sracle.getDefaultOptions();
 		assert.notEqual(options.logging, undefined);
@@ -108,7 +110,7 @@ describe('Contract interaction', () => {
 	var testContractData;
 	var testContract;
 	before(async function () {
-		this.timeout(10000);
+		this.timeout(10000*TIMEOUT)
 		accounts = await web3.eth.getAccounts();
 		await sracle.startListening();
 		var compiledTest = await sracle.compile('contracts/SracleTest.sol');
@@ -116,7 +118,7 @@ describe('Contract interaction', () => {
 		testContract = new web3.eth.Contract(JSON.parse(testContractData.interface));
 	});
 	beforeEach(async function() {
-		this.timeout(10000);
+		this.timeout(60000*TIMEOUT)
 		//TODO concurrency, maybe there is easier solution
 		deployedContract = await deployTestContract(testContract, testContractData, accounts[0]);			
 	});
@@ -132,7 +134,7 @@ describe('Contract interaction', () => {
 			gasPrice: '20000000',
 			value: '1000000000000000000'
 		});
-	}).timeout(30000);
+	}).timeout(30000*TIMEOUT)
 	it('should correctly return error on invalid CSS', (done) => {
 		deployedContract.events.TestEvent({
 			fromBlock: 0
@@ -150,7 +152,7 @@ describe('Contract interaction', () => {
 			gasPrice: '20000000',
 			value: '1000000000000000000'
 		});
-	}).timeout(30000);
+	}).timeout(60000*TIMEOUT)
 	it('should correctly react to startListening and stopListening', (done) => {
 		var listening;
 		deployedContract.events.TestEvent({
@@ -173,8 +175,8 @@ describe('Contract interaction', () => {
 			value: '1000000000000000000'
 		});
 		//TODO this is expected behavior but somewhat unclear
-		setTimeout(async () => sracle.startListening(), 6000);
-	}).timeout(8000);
+		setTimeout(async () => sracle.startListening(), 8000);
+	}).timeout(10000*TIMEOUT)
 	it('should not return anything (time out) on too low a transaction value', (done) => {
 		deployedContract.events.TestEvent({
 			fromBlock: 0
@@ -194,5 +196,5 @@ describe('Contract interaction', () => {
 			value: '1'
 		});
 		setTimeout(done, 10000);
-	}).timeout(12000);
+	}).timeout(12000*TIMEOUT)
 });		
