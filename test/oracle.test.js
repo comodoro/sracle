@@ -85,24 +85,24 @@ describe('Running', () => {
 		await sracle.stopListening();
 		assert.isFalse(sracle.isListening());
 	});
-	// it('should retrieve gas from EthGasStation', async () => {
-	// 	sracle.options.pricing.query =  {
-	// 		"type": "ethgasstation",
-	// 		"options": "low",
-	// 		"value": "1.5"			
-	// 	};
-	// 	var low = await sracle.getGasPriceFromEthgasstation();
-	// 	assert.isAbove(low.length, 0);
-	// 	sracle.options.pricing.query =  {
-	// 		"type": "ethgasstation",
-	// 		"options": "standard",
-	// 		"value": "1.5"			
-	// 	};
-	// 	var standard = await sracle.getGasPriceFromEthgasstation();
-	// 	assert.isAbove(standard.length, 0);
-	// 	//a bit suspicious that these can actually be equal
-	// 	assert.equal(Number(standard) >= Number(low), true);
-	// });
+	it('should retrieve gas from EthGasStation', async () => {
+		sracle.options.pricing.query =  {
+			"type": "ethgasstation",
+			"options": "low",
+			"value": "1.5"			
+		};
+		var low = await sracle.getGasPriceFromEthgasstation();
+		assert.isAbove(low.length, 0);
+		sracle.options.pricing.query =  {
+			"type": "ethgasstation",
+			"options": "standard",
+			"value": "1.5"			
+		};
+		var standard = await sracle.getGasPriceFromEthgasstation();
+		assert.isAbove(standard.length, 0);
+		//a bit suspicious that these can actually be equal
+		assert.equal(Number(standard) >= Number(low), true);
+	});
 });
 describe('Contract interaction', () => {
 	var deployedContract = {};

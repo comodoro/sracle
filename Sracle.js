@@ -284,35 +284,30 @@ class Sracle {
 	getGasPriceFromEthgasstation () {
 		var self = this;
 		return new Promise(function(resolve, reject) {
-			request('https://ethgasstation.info/', function (error, response, body) {
+			request('https://ethgasstation.info/json/ethgasAPI.json', function (error, response, body) {
 				if (error) {
 					self.logger.error(error);
 					throw error;
 				}
-				if ((response.statusCode < 200) || (response.statusCode >= 300)) {
-					reject('HTTP status code of EthGasStation response is not 200');
+				if ((response.statusCode < 200) || (response.statusCode >= 400)) {
+					reject('Bad HTTP status code of EthGasStation response');
 				}
-				//TODO This is too fragile
-				var css = '';
-				if ((!self.options.pricing.query) || (self.options.pricing.query.options == 'standard')) {
-					css = 'div.right_col > div.row.tile_count > div.col-md-2.col-sm-4.col-xs-6.tile_stats_count:nth-child(2) > div.count';
-				} else if (self.options.pricing.query.options == 'low') {
-					css = 'div.right_col > div.row.tile_count > div.col-md-2.col-sm-4.col-xs-6.tile_stats_count:nth-child(4) > div.count';
-				} else {
-					reject(new Error('Bad pricing option: ' + self.options.pricing));
-				}
-				var $ = cheerio.load(body);
-				var text = "";
+				var gasPrice;
 				try {
-					text = $(css).text();
+					var json = JSON.parse(body);
+					if ((!self.options.pricing.query) || (self.options.pricing.query.options == 'standard')) {
+						gasPrice = json.average;
+					} else if (self.options.pricing.query.options == 'low') {
+						gasPrice = json.safeLow;
+					} else {
+						reject(new Error('Bad pricing option: ' + self.options.pricing));
+					}
 				} catch(e) {
-					reject(e);
+				reject(e);
 				}
-				if (!text.match('^[0-9]+\.?[0-9]*$')) {
-					reject(new Error('Did not get a number from EthGasStation'));
-				}
-				resolve(text);
-			});
+				gasPrice = (gasPrice/10).toFixed(0);
+				resolve(gasPrice);
+				});
 		});
 	}
 

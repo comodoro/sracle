@@ -5,7 +5,7 @@ node_js:
   - "7"
 
 env:
-  - TIMEOUT=15
+  - TIMEOUT=20
 cache:
   directories:
   - node_modules
@@ -20,4 +20,4 @@ before_script:
   - sleep 30
 
 script:
-  - npm test
+  - travis_wait 30 npm test
